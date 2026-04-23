@@ -1,0 +1,2 @@
+# Nexacore
+Inventory management system 
