@@ -1,0 +1,7 @@
+com\nexacore\inventory\service\ProductService.class
+com\nexacore\inventory\InventoryApplication.class
+com\nexacore\inventory\controller\ProductController.class
+com\nexacore\inventory\repository\ProductRepository.class
+com\nexacore\inventory\model\Product$ProductBuilder.class
+com\nexacore\inventory\model\Product.class
+com\nexacore\inventory\config\SecurityConfig.class
