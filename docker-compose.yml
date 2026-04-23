@@ -1,0 +1,41 @@
+services:
+  nexacore-api:
+    build: .
+    container_name: nexacore-inventory-api
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://nexacore-db:5432/inventorydb
+      SPRING_DATASOURCE_USERNAME: nexacore
+      SPRING_DATASOURCE_PASSWORD: nexacore123
+    depends_on:
+      nexacore-db:
+        condition: service_healthy
+    networks:
+      - nexacore-network
+
+  nexacore-db:
+    image: postgres:16-alpine
+    container_name: nexacore-postgres
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_DB: inventorydb
+      POSTGRES_USER: nexacore
+      POSTGRES_PASSWORD: nexacore123
+    volumes:
+      - nexacore-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "nexacore", "-d", "inventorydb"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - nexacore-network
+
+volumes:
+  nexacore-db-data:
+
+networks:
+  nexacore-network:
+    driver: bridge
