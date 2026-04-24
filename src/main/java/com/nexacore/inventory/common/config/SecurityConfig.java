@@ -1,32 +1,44 @@
-package com.nexacore.inventory.config;
+package com.nexacore.inventory.common.config;
 
-import com.nexacore.inventory.security.JwtFilter;
+import com.nexacore.inventory.auth.security.JwtFilter;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+
+import java.util.List;
 
 @Configuration
 @EnableWebSecurity
 public class SecurityConfig {
 
+    private final JwtFilter jwtFilter;
+
     @Autowired
-    private JwtFilter jwtFilter;
+    public SecurityConfig(JwtFilter jwtFilter) {
+        this.jwtFilter = jwtFilter;
+    }
 
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
             .cors(cors -> cors.configurationSource(request -> {
-                var config = new org.springframework.web.cors.CorsConfiguration();
-                config.setAllowedOrigins(java.util.List.of("http://localhost:5173"));
-                config.setAllowedMethods(java.util.List.of("GET","POST","PUT","DELETE"));
-                config.setAllowedHeaders(java.util.List.of("*"));
+                var config = new CorsConfiguration();
+                config.setAllowedOriginPatterns(List.of("http://localhost:*", "http://127.0.0.1:*"));
+                config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"));
+                config.setAllowedHeaders(List.of("*"));
+                config.setAllowCredentials(false);
                 return config;
             }))
             .csrf(csrf -> csrf.disable())
+            .httpBasic(httpBasic -> httpBasic.disable())
+            .formLogin(form -> form.disable())
+            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
                     "/swagger-ui/**",
@@ -34,11 +46,13 @@ public class SecurityConfig {
                     "/api-docs/**",
                     "/v3/api-docs/**",
                     "/actuator/**",
-                    "/api/v1/auth/**"
+                    "/api/v1/auth/**",
+                    "/api/v1/integrations/**"
                 ).permitAll()
                 .anyRequest().authenticated()
             )
             .addFilterBefore(jwtFilter, UsernamePasswordAuthenticationFilter.class);
+
         return http.build();
     }
 }

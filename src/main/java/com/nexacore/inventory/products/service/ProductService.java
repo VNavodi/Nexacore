@@ -1,17 +1,19 @@
-package com.nexacore.inventory.service;
+package com.nexacore.inventory.products.service;
 
-import com.nexacore.inventory.model.Product;
-import com.nexacore.inventory.repository.ProductRepository;
-import lombok.RequiredArgsConstructor;
+import com.nexacore.inventory.products.model.Product;
+import com.nexacore.inventory.products.repository.ProductRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
 
 @Service
-@RequiredArgsConstructor
 public class ProductService {
 
     private final ProductRepository productRepository;
+
+    public ProductService(ProductRepository productRepository) {
+        this.productRepository = productRepository;
+    }
 
     public List<Product> getAllProducts() {
         return productRepository.findAll();
@@ -47,5 +49,10 @@ public class ProductService {
 
     public List<Product> getProductsByCategory(String category) {
         return productRepository.findByCategory(category);
+    }
+
+    public Product getBySku(String sku) {
+        return productRepository.findBySku(sku)
+            .orElseThrow(() -> new RuntimeException("Product not found with sku: " + sku));
     }
 }

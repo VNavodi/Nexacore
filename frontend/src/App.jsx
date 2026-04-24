@@ -11,10 +11,14 @@ function Login({ onLogin }) {
 
   const handleLogin = async () => {
     try {
-      const res = await axios.post(AUTH, { username, password });
+      const res = await axios.post(AUTH, { username: username.trim(), password: password.trim() });
       onLogin(res.data.token);
-    } catch {
-      setError("❌ Invalid username or password");
+    } catch (e) {
+      if (e.response?.status === 401) {
+        setError("❌ Invalid username or password");
+      } else {
+        setError("❌ Cannot reach API (check backend, URL, or CORS)");
+      }
     }
   };
 

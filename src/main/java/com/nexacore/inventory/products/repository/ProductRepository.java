@@ -1,6 +1,6 @@
-package com.nexacore.inventory.repository;
+package com.nexacore.inventory.products.repository;
 
-import com.nexacore.inventory.model.Product;
+import com.nexacore.inventory.products.model.Product;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
