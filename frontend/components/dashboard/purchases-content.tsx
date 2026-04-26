@@ -156,7 +156,7 @@ function getStatusBadge(status: string) {
 }
 
 export function PurchasesContent() {
-  const [isNewPOModalOpen, setIsNewPOModalOpen] = useState(true)
+  const [isNewPOModalOpen, setIsNewPOModalOpen] = useState(false)
   const [isReceiptPanelOpen, setIsReceiptPanelOpen] = useState(false)
   const [orderLines, setOrderLines] = useState([
     { id: 1, item: "", orderedQty: 0, unitCost: 0, expectedDate: "", receivedQty: 0 },

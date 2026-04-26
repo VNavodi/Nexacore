@@ -1,6 +1,7 @@
 "use client"
 
-import { Search, Download, Plus, Pencil, Trash2, X } from "lucide-react"
+import { useState } from "react"
+import { Search, Download, Plus, Pencil, Trash2, X, Settings2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -102,6 +103,9 @@ function getStatusVariant(status: string) {
 }
 
 export function ItemsContent() {
+  const [isModalOpen, setIsModalOpen] = useState(false)
+  const [isSheetOpen, setIsSheetOpen] = useState(false)
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -139,11 +143,15 @@ export function ItemsContent() {
 
             {/* Right: Actions */}
             <div className="flex items-center gap-3">
+              <Button variant="outline" onClick={() => setIsSheetOpen(true)}>
+                <Settings2 className="mr-2 h-4 w-4" />
+                Stock Adjustment
+              </Button>
               <Button variant="outline">
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
               </Button>
-              <Button>
+              <Button onClick={() => setIsModalOpen(true)}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Item
               </Button>
@@ -216,8 +224,8 @@ export function ItemsContent() {
         </CardContent>
       </Card>
 
-      {/* Add/Edit Item Modal - Rendered Open */}
-      <Dialog open>
+      {/* Add/Edit Item Modal */}
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>New Item</DialogTitle>
@@ -388,14 +396,14 @@ export function ItemsContent() {
           </Tabs>
 
           <DialogFooter className="mt-6">
-            <Button variant="outline">Cancel</Button>
-            <Button>Save Item</Button>
+            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
+            <Button onClick={() => setIsModalOpen(false)}>Save Item</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
 
       {/* Stock Adjustment Panel - Right Side Drawer */}
-      <Sheet open>
+      <Sheet open={isSheetOpen} onOpenChange={setIsSheetOpen}>
         <SheetContent side="right" className="w-[400px]">
           <SheetHeader>
             <SheetTitle>Quick Stock Adjustment</SheetTitle>
@@ -457,7 +465,7 @@ export function ItemsContent() {
             </div>
           </div>
           <SheetFooter>
-            <Button className="w-full">Apply Adjustment</Button>
+            <Button className="w-full" onClick={() => setIsSheetOpen(false)}>Apply Adjustment</Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
