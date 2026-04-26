@@ -1,6 +1,7 @@
 "use client"
 
-import { Bell, Search, ChevronDown, Plus, RefreshCw, Settings, HelpCircle } from "lucide-react"
+import { Bell, Search, ChevronDown, Plus, RefreshCw, Settings, HelpCircle, LogOut, User } from "lucide-react"
+import { useRouter } from "next/navigation"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
 import {
@@ -13,7 +14,12 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 
-export function Header() {
+interface HeaderProps {
+  sidebarCollapsed?: boolean
+}
+
+export function Header({ sidebarCollapsed }: HeaderProps) {
+  const router = useRouter()
   return (
     <header
       className="sticky top-0 z-30 flex h-14 items-center justify-between border-b border-gray-200 bg-white px-4"
@@ -112,11 +118,21 @@ export function Header() {
           <DropdownMenuContent align="end" className="w-56">
             <DropdownMenuLabel>My Account</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem>Profile</DropdownMenuItem>
+            <DropdownMenuItem 
+              className="cursor-pointer"
+              onClick={() => router.push("/profile")}
+            >
+              <User className="mr-2 h-4 w-4" />
+              Profile
+            </DropdownMenuItem>
             <DropdownMenuItem>Settings</DropdownMenuItem>
             <DropdownMenuItem>Billing</DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">
+            <DropdownMenuItem 
+              className="text-red-600 cursor-pointer"
+              onClick={() => router.push("/login")}
+            >
+              <LogOut className="mr-2 h-4 w-4" />
               Log out
             </DropdownMenuItem>
           </DropdownMenuContent>

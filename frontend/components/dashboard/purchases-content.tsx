@@ -161,7 +161,7 @@ export function PurchasesContent() {
   const [orderLines, setOrderLines] = useState([
     { id: 1, item: "", orderedQty: 0, unitCost: 0, expectedDate: "", receivedQty: 0 },
   ])
-  const [receiptLines, setReceiptLines] = useState(poItems)
+  const [receiptLines] = useState(poItems)
 
   const addOrderLine = () => {
     setOrderLines([

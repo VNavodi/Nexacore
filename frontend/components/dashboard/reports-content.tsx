@@ -15,7 +15,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import {
   Table,
   TableBody,
@@ -92,6 +92,21 @@ const taxSummaryData = [
   { type: "Zero Rated", taxable: 250000, taxAmount: 0 },
 ]
 
+const EmptyState = ({ onRun }: { onRun: () => void }) => (
+  <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
+    <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
+      <FileText className="h-12 w-12 text-muted-foreground" />
+    </div>
+    <h3 className="text-lg font-semibold text-foreground mb-2">No Report Data</h3>
+    <p className="text-muted-foreground max-w-sm mb-4">
+      Select your filters and click &quot;Apply Filters&quot; to generate the report.
+    </p>
+    <Button onClick={onRun}>
+      Run Report
+    </Button>
+  </div>
+)
+
 export function ReportsContent() {
   const [activeTab, setActiveTab] = useState("sales-summary")
   const [hasData, setHasData] = useState(true)
@@ -103,21 +118,6 @@ export function ReportsContent() {
       minimumFractionDigits: 2,
     }).format(value)
   }
-
-  const EmptyState = () => (
-    <div className="flex flex-col items-center justify-center min-h-[400px] text-center">
-      <div className="w-24 h-24 rounded-full bg-muted flex items-center justify-center mb-4">
-        <FileText className="h-12 w-12 text-muted-foreground" />
-      </div>
-      <h3 className="text-lg font-semibold text-foreground mb-2">No Report Data</h3>
-      <p className="text-muted-foreground max-w-sm mb-4">
-        Select your filters and click &quot;Apply Filters&quot; to generate the report.
-      </p>
-      <Button onClick={() => setHasData(true)}>
-        Run Report
-      </Button>
-    </div>
-  )
 
   return (
     <div className="space-y-6">
@@ -248,7 +248,7 @@ export function ReportsContent() {
       <Card>
         <CardContent className="p-4 min-h-[500px]">
           {!hasData ? (
-            <EmptyState />
+            <EmptyState onRun={() => setHasData(true)} />
           ) : (
             <>
               {/* Sales Summary Report */}
