@@ -86,6 +86,7 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
           variant="ghost"
           size="icon"
           className="h-8 w-8 text-gray-500 hover:text-gray-700"
+          onClick={() => router.push("/settings")}
         >
           <Settings className="h-5 w-5" />
         </Button>
@@ -125,7 +126,7 @@ export function Header({ sidebarCollapsed }: HeaderProps) {
               <User className="mr-2 h-4 w-4" />
               Profile
             </DropdownMenuItem>
-            <DropdownMenuItem>Settings</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push("/settings")}>Settings</DropdownMenuItem>
             <DropdownMenuItem>Billing</DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem 

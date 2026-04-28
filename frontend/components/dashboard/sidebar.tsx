@@ -13,7 +13,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Link2,
-  FileText,
+  Settings,
 } from "lucide-react"
 
 const navItems = [
@@ -23,7 +23,7 @@ const navItems = [
   { name: "Purchases", href: "/purchase-orders", icon: Truck, hasSubmenu: true },
   { name: "Integrations", href: "/integrations", icon: Link2 },
   { name: "Reports", href: "/reports", icon: BarChart3 },
-  { name: "Documents", href: "/documents", icon: FileText },
+  { name: "Settings", href: "/settings", icon: Settings },
 ]
 
 interface SidebarProps {
