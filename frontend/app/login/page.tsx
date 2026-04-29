@@ -18,6 +18,20 @@ export default function AuthPage() {
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
+    try {
+    const res = await fetch("http://localhost:8080/api/v1/auth/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ username: "admin", password: "admin123" }),
+    })
+    const data = await res.json()
+    if (data.token) {
+      localStorage.setItem("token", data.token)
+      router.push("/")
+    }
+  } finally {
+    setIsLoading(false)
+  }
     // Simulate authentication/registration delay
     setTimeout(() => {
       setIsLoading(false)
