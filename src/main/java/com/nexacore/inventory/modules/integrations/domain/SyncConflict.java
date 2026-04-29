@@ -10,8 +10,8 @@ import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "sync_conflicts", indexes = {
-    @Index(name = "idx_webhook_event_id", columnList = "webhookEventId"),
-    @Index(name = "idx_status", columnList = "status")
+    @Index(name = "idx_sync_conflicts_webhook_event_id", columnList = "webhook_event_id"),
+    @Index(name = "idx_sync_conflicts_status", columnList = "status")
 })
 @Data
 @NoArgsConstructor
@@ -28,17 +28,17 @@ public class SyncConflict {
     @Column(nullable = false)
     private String conflictType; // STOCK_MISMATCH, DUPLICATE_ORDER, PRICING_VARIANCE, etc.
 
-    @Column(nullable = false, columnDefinition = "LONGTEXT")
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String description;
 
     private Long productId;
 
     private String sku;
 
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(columnDefinition = "TEXT")
     private String expectedData; // JSON
 
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(columnDefinition = "TEXT")
     private String actualData; // JSON
 
     @Column(nullable = false)

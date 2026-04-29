@@ -43,6 +43,32 @@ export interface ProductResponse {
 }
 
 export class ProductAPI {
+  private static getAuthHeaders(): Record<string, string> {
+    const headers: Record<string, string> = {}
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token")
+      if (token) {
+        headers.Authorization = `Bearer ${token}`
+      }
+    }
+    return headers
+  }
+
+  private static async getErrorMessage(response: Response, fallback: string): Promise<string> {
+    const text = await response.text()
+    if (!text) return fallback
+
+    try {
+      const parsed = JSON.parse(text)
+      if (typeof parsed?.message === "string" && parsed.message.trim()) {
+        return parsed.message
+      }
+      return text
+    } catch {
+      return text
+    }
+  }
+
   /**
    * Create a new product
    */
@@ -51,16 +77,49 @@ export class ProductAPI {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...this.getAuthHeaders(),
       },
       body: JSON.stringify(data),
-    });
+    })
 
-    if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Failed to create product");
+    if (response.ok) {
+      return response.json()
     }
 
-    return response.json();
+    // Backward compatibility for older backend contract
+    if (response.status === 400 || response.status === 403) {
+      const legacyPayload = {
+        sku: data.sku,
+        name: data.name,
+        description: data.description,
+        category: data.category,
+        price: data.sellingPrice,
+        stockQuantity: data.openingStock,
+      }
+
+      const retryResponse = await fetch(`${API_BASE_URL}/products`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          ...this.getAuthHeaders(),
+        },
+        body: JSON.stringify(legacyPayload),
+      })
+
+      if (retryResponse.ok) {
+        return retryResponse.json()
+      }
+
+      const retryMessage = await this.getErrorMessage(retryResponse, "Failed to create product")
+      throw new Error(retryMessage)
+    }
+
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, "Failed to create product")
+      throw new Error(message)
+    }
+
+    return response.json()
   }
 
   /**
@@ -74,16 +133,17 @@ export class ProductAPI {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
+        ...this.getAuthHeaders(),
       },
       body: JSON.stringify(data),
-    });
+    })
 
     if (!response.ok) {
-      const error = await response.json();
-      throw new Error(error.message || "Failed to update product");
+      const message = await this.getErrorMessage(response, "Failed to update product")
+      throw new Error(message)
     }
 
-    return response.json();
+    return response.json()
   }
 
   /**
@@ -92,13 +152,15 @@ export class ProductAPI {
   static async getAllProducts(): Promise<ProductResponse[]> {
     const response = await fetch(`${API_BASE_URL}/products`, {
       method: "GET",
-    });
+      headers: this.getAuthHeaders(),
+    })
 
     if (!response.ok) {
-      throw new Error("Failed to fetch products");
+      const message = await this.getErrorMessage(response, "Failed to fetch products")
+      throw new Error(message)
     }
 
-    return response.json();
+    return response.json()
   }
 
   /**
@@ -107,13 +169,15 @@ export class ProductAPI {
   static async getProductById(id: number): Promise<ProductResponse> {
     const response = await fetch(`${API_BASE_URL}/products/${id}`, {
       method: "GET",
-    });
+      headers: this.getAuthHeaders(),
+    })
 
     if (!response.ok) {
-      throw new Error("Product not found");
+      const message = await this.getErrorMessage(response, "Product not found")
+      throw new Error(message)
     }
 
-    return response.json();
+    return response.json()
   }
 
   /**
@@ -122,10 +186,12 @@ export class ProductAPI {
   static async deleteProduct(id: number): Promise<void> {
     const response = await fetch(`${API_BASE_URL}/products/${id}`, {
       method: "DELETE",
-    });
+      headers: this.getAuthHeaders(),
+    })
 
     if (!response.ok) {
-      throw new Error("Failed to delete product");
+      const message = await this.getErrorMessage(response, "Failed to delete product")
+      throw new Error(message)
     }
   }
 
@@ -137,13 +203,15 @@ export class ProductAPI {
   ): Promise<ProductResponse[]> {
     const response = await fetch(`${API_BASE_URL}/products/category/${category}`, {
       method: "GET",
-    });
+      headers: this.getAuthHeaders(),
+    })
 
     if (!response.ok) {
-      throw new Error("Failed to fetch products by category");
+      const message = await this.getErrorMessage(response, "Failed to fetch products by category")
+      throw new Error(message)
     }
 
-    return response.json();
+    return response.json()
   }
 
   /**
@@ -152,12 +220,14 @@ export class ProductAPI {
   static async getLowStockProducts(): Promise<ProductResponse[]> {
     const response = await fetch(`${API_BASE_URL}/products/low-stock`, {
       method: "GET",
-    });
+      headers: this.getAuthHeaders(),
+    })
 
     if (!response.ok) {
-      throw new Error("Failed to fetch low stock products");
+      const message = await this.getErrorMessage(response, "Failed to fetch low stock products")
+      throw new Error(message)
     }
 
-    return response.json();
+    return response.json()
   }
 }
