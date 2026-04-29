@@ -30,42 +30,25 @@ public class Product {
     private Long id;
 
     @NotBlank
+    @Column(unique = true, nullable = false)
     private String sku;
 
     @NotBlank
     private String name;
 
-    private String description;
-
     private String category;
 
-    // Pricing fields
     @NotNull
     private Double costPrice;
 
     @NotNull
     private Double sellingPrice;
 
-    private Double taxRate;
-
-    private String taxType; // inclusive, exclusive, exempt
-
-    // Stock fields
-    @NotNull
-    private Integer openingStock;
-
     private Integer reorderLevel;
 
-    private String warehouse;
-
-    private String unitOfMeasure;
-
     @NotNull
-    private Integer stockQuantity;
-
-    // Keep entity type aligned with PostgreSQL column type used in deployed DB.
-    @Column(columnDefinition = "jsonb")
-    private String customAttributes;
+    @Column(name = "stock_on_hand")
+    private Integer stockOnHand;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

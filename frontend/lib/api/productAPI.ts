@@ -1,5 +1,8 @@
-// API Base URL - adjust based on your environment
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080/api/v1";
+// API Base URL - prefer env var; fallback supports local Spring on 8081.
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL
+const API_BASE_URLS = API_BASE_URL
+  ? [API_BASE_URL]
+  : ["http://localhost:8080/api/v1", "http://localhost:8081/api/v1"]
 
 export interface CustomAttribute {
   key: string;
@@ -9,40 +12,61 @@ export interface CustomAttribute {
 export interface ProductRequest {
   sku: string;
   name: string;
-  description: string;
   category: string;
   costPrice: number;
   sellingPrice: number;
-  taxRate: number;
-  taxType: string;
   openingStock: number;
   reorderLevel: number;
-  warehouse: string;
-  unitOfMeasure: string;
-  customAttributes: Record<string, string>;
 }
 
 export interface ProductResponse {
   id: number;
   sku: string;
   name: string;
-  description: string;
   category: string;
   costPrice: number;
   sellingPrice: number;
-  taxRate: number;
-  taxType: string;
-  openingStock: number;
   reorderLevel: number;
-  warehouse: string;
-  unitOfMeasure: string;
-  stockQuantity: number;
-  customAttributes: Record<string, string>;
+  stockOnHand: number;
   createdAt: string;
   updatedAt: string;
 }
 
 export class ProductAPI {
+  private static async requestWithFallback(path: string, init: RequestInit): Promise<Response> {
+    let lastResponse: Response | null = null
+    let lastError: Error | null = null
+
+    for (let i = 0; i < API_BASE_URLS.length; i++) {
+      const baseUrl = API_BASE_URLS[i]
+      try {
+        const response = await fetch(`${baseUrl}${path}`, init)
+        lastResponse = response
+
+        // Retry next base URL only when first local URL is forbidden/unavailable.
+        const shouldRetry =
+          i < API_BASE_URLS.length - 1 &&
+          !API_BASE_URL &&
+          (response.status === 403 || response.status >= 500)
+
+        if (shouldRetry) {
+          continue
+        }
+        return response
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error("Network request failed")
+        if (i < API_BASE_URLS.length - 1) {
+          continue
+        }
+      }
+    }
+
+    if (lastResponse) {
+      return lastResponse
+    }
+    throw lastError ?? new Error("Network request failed")
+  }
+
   private static getAuthHeaders(): Record<string, string> {
     const headers: Record<string, string> = {}
     if (typeof window !== "undefined") {
@@ -73,7 +97,7 @@ export class ProductAPI {
    * Create a new product
    */
   static async createProduct(data: ProductRequest): Promise<ProductResponse> {
-    const response = await fetch(`${API_BASE_URL}/products`, {
+    const response = await this.requestWithFallback("/products", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -91,13 +115,12 @@ export class ProductAPI {
       const legacyPayload = {
         sku: data.sku,
         name: data.name,
-        description: data.description,
         category: data.category,
         price: data.sellingPrice,
         stockQuantity: data.openingStock,
       }
 
-      const retryResponse = await fetch(`${API_BASE_URL}/products`, {
+      const retryResponse = await this.requestWithFallback("/products", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -129,7 +152,7 @@ export class ProductAPI {
     id: number,
     data: ProductRequest
   ): Promise<ProductResponse> {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    const response = await this.requestWithFallback(`/products/${id}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",
@@ -150,7 +173,7 @@ export class ProductAPI {
    * Get all products
    */
   static async getAllProducts(): Promise<ProductResponse[]> {
-    const response = await fetch(`${API_BASE_URL}/products`, {
+    const response = await this.requestWithFallback("/products", {
       method: "GET",
       headers: this.getAuthHeaders(),
     })
@@ -167,7 +190,7 @@ export class ProductAPI {
    * Get product by ID
    */
   static async getProductById(id: number): Promise<ProductResponse> {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    const response = await this.requestWithFallback(`/products/${id}`, {
       method: "GET",
       headers: this.getAuthHeaders(),
     })
@@ -184,7 +207,7 @@ export class ProductAPI {
    * Delete product
    */
   static async deleteProduct(id: number): Promise<void> {
-    const response = await fetch(`${API_BASE_URL}/products/${id}`, {
+    const response = await this.requestWithFallback(`/products/${id}`, {
       method: "DELETE",
       headers: this.getAuthHeaders(),
     })
@@ -201,7 +224,7 @@ export class ProductAPI {
   static async getProductsByCategory(
     category: string
   ): Promise<ProductResponse[]> {
-    const response = await fetch(`${API_BASE_URL}/products/category/${category}`, {
+    const response = await this.requestWithFallback(`/products/category/${category}`, {
       method: "GET",
       headers: this.getAuthHeaders(),
     })
@@ -218,7 +241,7 @@ export class ProductAPI {
    * Get low stock products
    */
   static async getLowStockProducts(): Promise<ProductResponse[]> {
-    const response = await fetch(`${API_BASE_URL}/products/low-stock`, {
+    const response = await this.requestWithFallback("/products/low-stock", {
       method: "GET",
       headers: this.getAuthHeaders(),
     })

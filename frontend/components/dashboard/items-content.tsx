@@ -1,8 +1,8 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Download, Plus, Pencil, Trash2, X, Settings2, Loader2 } from "lucide-react"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Search, Download, Plus, Pencil, Trash2, Settings2, Loader2 } from "lucide-react"
+import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import {
@@ -29,7 +29,6 @@ import {
   DialogTitle,
   DialogFooter,
 } from "@/components/ui/dialog"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import {
@@ -90,11 +89,6 @@ const sampleItems = [
   },
 ]
 
-interface CustomAttribute {
-  key: string
-  value: string
-}
-
 function getStatusVariant(status: string) {
   switch (status) {
     case "In Stock":
@@ -114,56 +108,33 @@ export function ItemsContent() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
+  const [isGeneratingSku, setIsGeneratingSku] = useState(false)
 
-  // Form state - Basic Tab
-  const [sku, setSku] = useState("")
+  // Form state
+  const [sku, setSku] = useState("SKU-001")
   const [itemName, setItemName] = useState("")
   const [category, setCategory] = useState("")
-  const [description, setDescription] = useState("")
-
-  // Form state - Pricing & Tax Tab
   const [costPrice, setCostPrice] = useState("")
   const [sellingPrice, setSellingPrice] = useState("")
-  const [taxRate, setTaxRate] = useState("")
-  const [taxType, setTaxType] = useState("inclusive")
-
-  // Form state - Stock Tab
   const [openingStock, setOpeningStock] = useState("")
   const [reorderLevel, setReorderLevel] = useState("")
-  const [warehouse, setWarehouse] = useState("")
-  const [unitOfMeasure, setUnitOfMeasure] = useState("")
 
-  // Form state - Custom Attributes Tab
-  const [customAttributes, setCustomAttributes] = useState<CustomAttribute[]>([
-    { key: "", value: "" },
-  ])
-
-  const handleAddAttribute = () => {
-    setCustomAttributes([...customAttributes, { key: "", value: "" }])
-  }
-
-  const handleRemoveAttribute = (index: number) => {
-    setCustomAttributes(customAttributes.filter((_, i) => i !== index))
-  }
-
-  const handleAttributeChange = (
-    index: number,
-    field: "key" | "value",
-    val: string
-  ) => {
-    const updated = [...customAttributes]
-    updated[index] = { ...updated[index], [field]: val }
-    setCustomAttributes(updated)
-  }
-
-  const convertAttributesToObject = (): Record<string, string> => {
-    const obj: Record<string, string> = {}
-    customAttributes.forEach((attr) => {
-      if (attr.key && attr.value) {
-        obj[attr.key] = attr.value
-      }
-    })
-    return obj
+  const generateNextSku = async () => {
+    setIsGeneratingSku(true)
+    try {
+      const products = await ProductAPI.getAllProducts()
+      const maxSkuNumber = products.reduce((max, product) => {
+        const match = product.sku?.match(/^SKU-(\d+)$/i)
+        if (!match) return max
+        const value = Number.parseInt(match[1], 10)
+        return Number.isNaN(value) ? max : Math.max(max, value)
+      }, 0)
+      setSku(`SKU-${String(maxSkuNumber + 1).padStart(3, "0")}`)
+    } catch {
+      setSku("SKU-001")
+    } finally {
+      setIsGeneratingSku(false)
+    }
   }
 
   const validateForm = (): boolean => {
@@ -191,14 +162,6 @@ export function ItemsContent() {
       setError("Valid opening stock quantity is required")
       return false
     }
-    if (!warehouse) {
-      setError("Warehouse is required")
-      return false
-    }
-    if (!unitOfMeasure) {
-      setError("Unit of measure is required")
-      return false
-    }
     setError(null)
     return true
   }
@@ -217,17 +180,11 @@ export function ItemsContent() {
       const productRequest: ProductRequest = {
         sku: sku.trim(),
         name: itemName.trim(),
-        description: description.trim(),
         category,
         costPrice: parseFloat(costPrice),
         sellingPrice: parseFloat(sellingPrice),
-        taxRate: taxRate ? parseFloat(taxRate) : 0,
-        taxType,
         openingStock: parseInt(openingStock),
         reorderLevel: reorderLevel ? parseInt(reorderLevel) : 0,
-        warehouse,
-        unitOfMeasure,
-        customAttributes: convertAttributesToObject(),
       }
 
       await ProductAPI.createProduct(productRequest)
@@ -246,19 +203,13 @@ export function ItemsContent() {
   }
 
   const resetForm = () => {
-    setSku("")
+    setSku("SKU-001")
     setItemName("")
     setCategory("")
-    setDescription("")
     setCostPrice("")
     setSellingPrice("")
-    setTaxRate("")
-    setTaxType("inclusive")
     setOpeningStock("")
     setReorderLevel("")
-    setWarehouse("")
-    setUnitOfMeasure("")
-    setCustomAttributes([{ key: "", value: "" }])
     setError(null)
     setSuccess(null)
   }
@@ -266,6 +217,12 @@ export function ItemsContent() {
   const handleCloseModal = () => {
     resetForm()
     setIsModalOpen(false)
+  }
+
+  const handleOpenModal = async () => {
+    resetForm()
+    setIsModalOpen(true)
+    await generateNextSku()
   }
 
   return (
@@ -325,7 +282,7 @@ export function ItemsContent() {
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
               </Button>
-              <Button onClick={() => setIsModalOpen(true)}>
+              <Button onClick={handleOpenModal}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Item
               </Button>
@@ -404,223 +361,89 @@ export function ItemsContent() {
           <DialogHeader>
             <DialogTitle>New Item</DialogTitle>
           </DialogHeader>
-          <Tabs defaultValue="basic" className="mt-4">
-            <TabsList className="grid w-full grid-cols-4">
-              <TabsTrigger value="basic">Basic</TabsTrigger>
-              <TabsTrigger value="pricing">Pricing & Tax</TabsTrigger>
-              <TabsTrigger value="stock">Stock</TabsTrigger>
-              <TabsTrigger value="attributes">Custom Attributes</TabsTrigger>
-            </TabsList>
-
-            {/* Basic Tab */}
-            <TabsContent value="basic" className="space-y-4 mt-4">
-              <div className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="sku">SKU</Label>
-                  <Input
-                    id="sku"
-                    placeholder="Enter SKU code"
-                    value={sku}
-                    onChange={(e) => setSku(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="name">Item Name</Label>
-                  <Input
-                    id="name"
-                    placeholder="Enter item name"
-                    value={itemName}
-                    onChange={(e) => setItemName(e.target.value)}
-                  />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="category">Category</Label>
-                  <Select value={category} onValueChange={setCategory}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Select category" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="electronics">Electronics</SelectItem>
-                      <SelectItem value="grocery">Grocery</SelectItem>
-                      <SelectItem value="kitchenware">Kitchenware</SelectItem>
-                      <SelectItem value="apparel">Apparel</SelectItem>
-                      <SelectItem value="health">Health</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="description">Description</Label>
-                  <Textarea
-                    id="description"
-                    placeholder="Enter item description"
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                  />
-                </div>
+          <div className="grid gap-4 mt-4">
+            <div className="grid gap-2">
+              <Label htmlFor="sku">SKU Code</Label>
+              <Input id="sku" value={sku} disabled className="bg-muted" />
+              <p className="text-xs text-muted-foreground">
+                Auto-generated in format SKU-001
+              </p>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="name">Item Name</Label>
+              <Input
+                id="name"
+                placeholder="Enter item name"
+                value={itemName}
+                onChange={(e) => setItemName(e.target.value)}
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="category">Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Select category" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="electronics">Electronics</SelectItem>
+                  <SelectItem value="grocery">Grocery</SelectItem>
+                  <SelectItem value="kitchenware">Kitchenware</SelectItem>
+                  <SelectItem value="apparel">Apparel</SelectItem>
+                  <SelectItem value="health">Health</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="costPrice">Cost Price</Label>
+                <Input
+                  id="costPrice"
+                  type="number"
+                  placeholder="0.00"
+                  value={costPrice}
+                  onChange={(e) => setCostPrice(e.target.value)}
+                />
               </div>
-            </TabsContent>
-
-            {/* Pricing & Tax Tab */}
-            <TabsContent value="pricing" className="space-y-4 mt-4">
-              <div className="grid gap-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="costPrice">Cost Price</Label>
-                    <Input
-                      id="costPrice"
-                      type="number"
-                      placeholder="0.00"
-                      value={costPrice}
-                      onChange={(e) => setCostPrice(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="sellingPrice">Selling Price</Label>
-                    <Input
-                      id="sellingPrice"
-                      type="number"
-                      placeholder="0.00"
-                      value={sellingPrice}
-                      onChange={(e) => setSellingPrice(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="taxRate">Tax Rate (%)</Label>
-                    <Input
-                      id="taxRate"
-                      type="number"
-                      placeholder="0"
-                      value={taxRate}
-                      onChange={(e) => setTaxRate(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="taxType">Tax Type</Label>
-                    <Select value={taxType} onValueChange={setTaxType}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select tax type" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="inclusive">Inclusive</SelectItem>
-                        <SelectItem value="exclusive">Exclusive</SelectItem>
-                        <SelectItem value="exempt">Exempt</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="sellingPrice">Selling Price</Label>
+                <Input
+                  id="sellingPrice"
+                  type="number"
+                  placeholder="0.00"
+                  value={sellingPrice}
+                  onChange={(e) => setSellingPrice(e.target.value)}
+                />
               </div>
-            </TabsContent>
-
-            {/* Stock Tab */}
-            <TabsContent value="stock" className="space-y-4 mt-4">
-              <div className="grid gap-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="openingStock">Opening Stock</Label>
-                    <Input
-                      id="openingStock"
-                      type="number"
-                      placeholder="0"
-                      value={openingStock}
-                      onChange={(e) => setOpeningStock(e.target.value)}
-                    />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="reorderLevel">Reorder Level</Label>
-                    <Input
-                      id="reorderLevel"
-                      type="number"
-                      placeholder="0"
-                      value={reorderLevel}
-                      onChange={(e) => setReorderLevel(e.target.value)}
-                    />
-                  </div>
-                </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="warehouse">Warehouse</Label>
-                    <Select value={warehouse} onValueChange={setWarehouse}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select warehouse" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="main">Main Warehouse</SelectItem>
-                        <SelectItem value="secondary">Secondary</SelectItem>
-                        <SelectItem value="outlet">Retail Outlet</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="unit">Unit of Measure</Label>
-                    <Select value={unitOfMeasure} onValueChange={setUnitOfMeasure}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select unit" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="pcs">Pieces (pcs)</SelectItem>
-                        <SelectItem value="kg">Kilograms (kg)</SelectItem>
-                        <SelectItem value="l">Liters (L)</SelectItem>
-                        <SelectItem value="box">Box</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="openingStock">Opening Stock</Label>
+                <Input
+                  id="openingStock"
+                  type="number"
+                  placeholder="0"
+                  value={openingStock}
+                  onChange={(e) => setOpeningStock(e.target.value)}
+                />
               </div>
-            </TabsContent>
-
-            {/* Custom Attributes Tab */}
-            <TabsContent value="attributes" className="space-y-4 mt-4">
-              <div className="space-y-4">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <h4 className="text-sm font-medium">Dynamic Fields (JSON)</h4>
-                    <p className="text-xs text-muted-foreground">
-                      Add custom key-value pairs for this item
-                    </p>
-                  </div>
-                  <Button variant="outline" size="sm" onClick={handleAddAttribute}>
-                    <Plus className="mr-2 h-4 w-4" />
-                    Add Field
-                  </Button>
-                </div>
-
-                <div className="space-y-3">
-                  {customAttributes.map((attr, index) => (
-                    <div key={index} className="flex items-center gap-3">
-                      <Input
-                        placeholder="Key (e.g., Expiry, Batch)"
-                        value={attr.key}
-                        onChange={(e) => handleAttributeChange(index, "key", e.target.value)}
-                        className="flex-1"
-                      />
-                      <Input
-                        placeholder="Value"
-                        value={attr.value}
-                        onChange={(e) => handleAttributeChange(index, "value", e.target.value)}
-                        className="flex-1"
-                      />
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-9 w-9 shrink-0"
-                        onClick={() => handleRemoveAttribute(index)}
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
+              <div className="grid gap-2">
+                <Label htmlFor="reorderLevel">Reorder Level</Label>
+                <Input
+                  id="reorderLevel"
+                  type="number"
+                  placeholder="0"
+                  value={reorderLevel}
+                  onChange={(e) => setReorderLevel(e.target.value)}
+                />
               </div>
-            </TabsContent>
-          </Tabs>
+            </div>
+          </div>
 
           <DialogFooter className="mt-6">
             <Button variant="outline" onClick={handleCloseModal}>
               Cancel
             </Button>
-            <Button onClick={handleSaveItem} disabled={isLoading}>
+            <Button onClick={handleSaveItem} disabled={isLoading || isGeneratingSku}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {isLoading ? "Saving..." : "Save Item"}
             </Button>

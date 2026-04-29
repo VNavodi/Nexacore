@@ -1,3 +1,5 @@
+// App starting point (main method), Spring Boot starts here.
+
 package com.nexacore.inventory;
 
 import org.springframework.boot.SpringApplication;

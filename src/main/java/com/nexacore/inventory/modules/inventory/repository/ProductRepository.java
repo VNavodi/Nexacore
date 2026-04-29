@@ -11,5 +11,5 @@ import java.util.Optional;
 public interface ProductRepository extends JpaRepository<Product, Long> {
     List<Product> findByCategory(String category);
     Optional<Product> findBySku(String sku);
-    List<Product> findByStockQuantityLessThan(Integer threshold);
+    List<Product> findByStockOnHandLessThan(Integer threshold);
 }

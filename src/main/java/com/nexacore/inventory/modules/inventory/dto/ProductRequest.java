@@ -3,8 +3,7 @@ package com.nexacore.inventory.modules.inventory.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
-import com.fasterxml.jackson.annotation.JsonProperty;
-import java.util.Map;
+import jakarta.validation.constraints.PositiveOrZero;
 
 public record ProductRequest(
         @NotBlank
@@ -12,8 +11,6 @@ public record ProductRequest(
 
         @NotBlank
         String name,
-
-        String description,
 
         String category,
 
@@ -25,21 +22,11 @@ public record ProductRequest(
         @Positive
         Double sellingPrice,
 
-        Double taxRate,
-
-        String taxType, // inclusive, exclusive, exempt
-
         @NotNull
-        @Positive
+        @PositiveOrZero
         Integer openingStock,
 
-        Integer reorderLevel,
-
-        String warehouse,
-
-        String unitOfMeasure,
-
-        @JsonProperty("customAttributes")
-        Map<String, String> customAttributes
+        @PositiveOrZero
+        Integer reorderLevel
 ) {
 }
