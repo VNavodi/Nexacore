@@ -14,11 +14,11 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/api/v1/integrations")
-public class IntegrationController {
+public class StockIntegrationController {
 
     private final StockService stockService;
 
-    public IntegrationController(StockService stockService) {
+    public StockIntegrationController(StockService stockService) {
         this.stockService = stockService;
     }
 

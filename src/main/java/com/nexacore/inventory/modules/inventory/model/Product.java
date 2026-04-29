@@ -1,5 +1,6 @@
 package com.nexacore.inventory.modules.inventory.model;
 
+import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -29,19 +30,42 @@ public class Product {
     private Long id;
 
     @NotBlank
+    private String sku;
+
+    @NotBlank
     private String name;
 
     private String description;
 
+    private String category;
+
+    // Pricing fields
     @NotNull
-    private Double price;
+    private Double costPrice;
+
+    @NotNull
+    private Double sellingPrice;
+
+    private Double taxRate;
+
+    private String taxType; // inclusive, exclusive, exempt
+
+    // Stock fields
+    @NotNull
+    private Integer openingStock;
+
+    private Integer reorderLevel;
+
+    private String warehouse;
+
+    private String unitOfMeasure;
 
     @NotNull
     private Integer stockQuantity;
 
-    private String category;
-
-    private String sku;
+    // Custom attributes stored as JSON
+    @Column(columnDefinition = "json")
+    private String customAttributes;
 
     @CreationTimestamp
     private LocalDateTime createdAt;

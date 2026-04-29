@@ -1,5 +1,7 @@
 package com.nexacore.inventory.modules.inventory.controller;
 
+import com.nexacore.inventory.modules.inventory.dto.ProductRequest;
+import com.nexacore.inventory.modules.inventory.dto.ProductResponse;
 import com.nexacore.inventory.modules.inventory.model.Product;
 import com.nexacore.inventory.modules.inventory.service.ProductService;
 import jakarta.validation.Valid;
@@ -31,18 +33,21 @@ public class ProductController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Product> getProductById(@PathVariable Long id) {
-        return ResponseEntity.ok(productService.getProductById(id));
+    public ResponseEntity<ProductResponse> getProductById(@PathVariable Long id) {
+        Product product = productService.getProductById(id);
+        return ResponseEntity.ok(convertToResponse(product));
     }
 
     @PostMapping
-    public ResponseEntity<Product> createProduct(@RequestBody @Valid Product product) {
-        return ResponseEntity.status(201).body(productService.createProduct(product));
+    public ResponseEntity<ProductResponse> createProduct(@RequestBody @Valid ProductRequest request) {
+        Product product = productService.createProductFromRequest(request);
+        return ResponseEntity.status(201).body(convertToResponse(product));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<Product> updateProduct(@PathVariable Long id, @RequestBody Product product) {
-        return ResponseEntity.ok(productService.updateProduct(id, product));
+    public ResponseEntity<ProductResponse> updateProduct(@PathVariable Long id, @RequestBody @Valid ProductRequest request) {
+        Product product = productService.updateProduct(id, request);
+        return ResponseEntity.ok(convertToResponse(product));
     }
 
     @DeleteMapping("/{id}")
@@ -59,5 +64,27 @@ public class ProductController {
     @GetMapping("/category/{category}")
     public ResponseEntity<List<Product>> getByCategory(@PathVariable String category) {
         return ResponseEntity.ok(productService.getProductsByCategory(category));
+    }
+
+    private ProductResponse convertToResponse(Product product) {
+        return new ProductResponse(
+                product.getId(),
+                product.getSku(),
+                product.getName(),
+                product.getDescription(),
+                product.getCategory(),
+                product.getCostPrice(),
+                product.getSellingPrice(),
+                product.getTaxRate(),
+                product.getTaxType(),
+                product.getOpeningStock(),
+                product.getReorderLevel(),
+                product.getWarehouse(),
+                product.getUnitOfMeasure(),
+                product.getStockQuantity(),
+                productService.convertJsonToMap(product.getCustomAttributes()),
+                product.getCreatedAt(),
+                product.getUpdatedAt()
+        );
     }
 }

@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.CrossOrigin;
 
 import java.util.List;
 
@@ -16,7 +17,8 @@ import java.util.List;
 @RequestMapping("/api/v1")
 @RequiredArgsConstructor
 @Slf4j
-public class IntegrationController {
+@CrossOrigin(origins = "http://localhost:3000")
+public class WebhookIntegrationController {
 
     private final WebhookService webhookService;
     private final HmacVerificationService hmacVerificationService;
@@ -139,7 +141,7 @@ public class IntegrationController {
      * GET /api/v1/products
      * CRUD for items - fetch catalog for POS
      */
-    @GetMapping("/products")
+    @GetMapping("/integrations/products")
     public ResponseEntity<?> getProducts(
             @RequestParam(value = "sku", required = false) String sku,
             @RequestParam(value = "status", required = false) String status) {
@@ -149,7 +151,7 @@ public class IntegrationController {
         return ResponseEntity.ok("[]");
     }
 
-    @PostMapping("/products")
+    @PostMapping("/integrations/products")
     public ResponseEntity<?> createProduct(@RequestBody Object product) {
         log.info("Creating product");
         // TODO: Implement product creation

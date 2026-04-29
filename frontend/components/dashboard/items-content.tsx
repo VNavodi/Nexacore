@@ -1,7 +1,7 @@
 "use client"
 
 import { useState } from "react"
-import { Search, Download, Plus, Pencil, Trash2, X, Settings2 } from "lucide-react"
+import { Search, Download, Plus, Pencil, Trash2, X, Settings2, Loader2 } from "lucide-react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -39,6 +39,7 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet"
+import { ProductAPI, ProductRequest } from "@/lib/api/productAPI"
 
 // Sample data structure for display
 const sampleItems = [
@@ -89,6 +90,11 @@ const sampleItems = [
   },
 ]
 
+interface CustomAttribute {
+  key: string
+  value: string
+}
+
 function getStatusVariant(status: string) {
   switch (status) {
     case "In Stock":
@@ -105,6 +111,162 @@ function getStatusVariant(status: string) {
 export function ItemsContent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
+  const [isLoading, setIsLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
+  const [success, setSuccess] = useState<string | null>(null)
+
+  // Form state - Basic Tab
+  const [sku, setSku] = useState("")
+  const [itemName, setItemName] = useState("")
+  const [category, setCategory] = useState("")
+  const [description, setDescription] = useState("")
+
+  // Form state - Pricing & Tax Tab
+  const [costPrice, setCostPrice] = useState("")
+  const [sellingPrice, setSellingPrice] = useState("")
+  const [taxRate, setTaxRate] = useState("")
+  const [taxType, setTaxType] = useState("inclusive")
+
+  // Form state - Stock Tab
+  const [openingStock, setOpeningStock] = useState("")
+  const [reorderLevel, setReorderLevel] = useState("")
+  const [warehouse, setWarehouse] = useState("")
+  const [unitOfMeasure, setUnitOfMeasure] = useState("")
+
+  // Form state - Custom Attributes Tab
+  const [customAttributes, setCustomAttributes] = useState<CustomAttribute[]>([
+    { key: "", value: "" },
+  ])
+
+  const handleAddAttribute = () => {
+    setCustomAttributes([...customAttributes, { key: "", value: "" }])
+  }
+
+  const handleRemoveAttribute = (index: number) => {
+    setCustomAttributes(customAttributes.filter((_, i) => i !== index))
+  }
+
+  const handleAttributeChange = (
+    index: number,
+    field: "key" | "value",
+    val: string
+  ) => {
+    const updated = [...customAttributes]
+    updated[index] = { ...updated[index], [field]: val }
+    setCustomAttributes(updated)
+  }
+
+  const convertAttributesToObject = (): Record<string, string> => {
+    const obj: Record<string, string> = {}
+    customAttributes.forEach((attr) => {
+      if (attr.key && attr.value) {
+        obj[attr.key] = attr.value
+      }
+    })
+    return obj
+  }
+
+  const validateForm = (): boolean => {
+    if (!sku.trim()) {
+      setError("SKU is required")
+      return false
+    }
+    if (!itemName.trim()) {
+      setError("Item name is required")
+      return false
+    }
+    if (!category) {
+      setError("Category is required")
+      return false
+    }
+    if (!costPrice || isNaN(parseFloat(costPrice))) {
+      setError("Valid cost price is required")
+      return false
+    }
+    if (!sellingPrice || isNaN(parseFloat(sellingPrice))) {
+      setError("Valid selling price is required")
+      return false
+    }
+    if (!openingStock || isNaN(parseInt(openingStock))) {
+      setError("Valid opening stock quantity is required")
+      return false
+    }
+    if (!warehouse) {
+      setError("Warehouse is required")
+      return false
+    }
+    if (!unitOfMeasure) {
+      setError("Unit of measure is required")
+      return false
+    }
+    setError(null)
+    return true
+  }
+
+  const handleSaveItem = async () => {
+    setError(null)
+    setSuccess(null)
+
+    if (!validateForm()) {
+      return
+    }
+
+    setIsLoading(true)
+
+    try {
+      const productRequest: ProductRequest = {
+        sku: sku.trim(),
+        name: itemName.trim(),
+        description: description.trim(),
+        category,
+        costPrice: parseFloat(costPrice),
+        sellingPrice: parseFloat(sellingPrice),
+        taxRate: taxRate ? parseFloat(taxRate) : 0,
+        taxType,
+        openingStock: parseInt(openingStock),
+        reorderLevel: reorderLevel ? parseInt(reorderLevel) : 0,
+        warehouse,
+        unitOfMeasure,
+        customAttributes: convertAttributesToObject(),
+      }
+
+      await ProductAPI.createProduct(productRequest)
+      setSuccess("Product created successfully!")
+
+      // Reset form
+      resetForm()
+      setIsModalOpen(false)
+
+      // Optionally refresh the product list here
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to save product")
+    } finally {
+      setIsLoading(false)
+    }
+  }
+
+  const resetForm = () => {
+    setSku("")
+    setItemName("")
+    setCategory("")
+    setDescription("")
+    setCostPrice("")
+    setSellingPrice("")
+    setTaxRate("")
+    setTaxType("inclusive")
+    setOpeningStock("")
+    setReorderLevel("")
+    setWarehouse("")
+    setUnitOfMeasure("")
+    setCustomAttributes([{ key: "", value: "" }])
+    setError(null)
+    setSuccess(null)
+  }
+
+  const handleCloseModal = () => {
+    resetForm()
+    setIsModalOpen(false)
+  }
 
   return (
     <div className="space-y-6">
@@ -112,6 +274,18 @@ export function ItemsContent() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold text-foreground">Items & Stock</h1>
       </div>
+
+      {/* Success/Error Messages */}
+      {success && (
+        <div className="p-4 bg-green-50 border border-green-200 text-green-800 rounded-md">
+          {success}
+        </div>
+      )}
+      {error && (
+        <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-md">
+          {error}
+        </div>
+      )}
 
       {/* Toolbar */}
       <Card>
@@ -225,7 +399,7 @@ export function ItemsContent() {
       </Card>
 
       {/* Add/Edit Item Modal */}
-      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+      <Dialog open={isModalOpen} onOpenChange={handleCloseModal}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>New Item</DialogTitle>
@@ -243,15 +417,25 @@ export function ItemsContent() {
               <div className="grid gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="sku">SKU</Label>
-                  <Input id="sku" placeholder="Enter SKU code" />
+                  <Input
+                    id="sku"
+                    placeholder="Enter SKU code"
+                    value={sku}
+                    onChange={(e) => setSku(e.target.value)}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="name">Item Name</Label>
-                  <Input id="name" placeholder="Enter item name" />
+                  <Input
+                    id="name"
+                    placeholder="Enter item name"
+                    value={itemName}
+                    onChange={(e) => setItemName(e.target.value)}
+                  />
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="category">Category</Label>
-                  <Select>
+                  <Select value={category} onValueChange={setCategory}>
                     <SelectTrigger>
                       <SelectValue placeholder="Select category" />
                     </SelectTrigger>
@@ -266,7 +450,12 @@ export function ItemsContent() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="description">Description</Label>
-                  <Textarea id="description" placeholder="Enter item description" />
+                  <Textarea
+                    id="description"
+                    placeholder="Enter item description"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                  />
                 </div>
               </div>
             </TabsContent>
@@ -277,21 +466,39 @@ export function ItemsContent() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="costPrice">Cost Price</Label>
-                    <Input id="costPrice" type="number" placeholder="0.00" />
+                    <Input
+                      id="costPrice"
+                      type="number"
+                      placeholder="0.00"
+                      value={costPrice}
+                      onChange={(e) => setCostPrice(e.target.value)}
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="sellingPrice">Selling Price</Label>
-                    <Input id="sellingPrice" type="number" placeholder="0.00" />
+                    <Input
+                      id="sellingPrice"
+                      type="number"
+                      placeholder="0.00"
+                      value={sellingPrice}
+                      onChange={(e) => setSellingPrice(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="taxRate">Tax Rate (%)</Label>
-                    <Input id="taxRate" type="number" placeholder="0" />
+                    <Input
+                      id="taxRate"
+                      type="number"
+                      placeholder="0"
+                      value={taxRate}
+                      onChange={(e) => setTaxRate(e.target.value)}
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="taxType">Tax Type</Label>
-                    <Select>
+                    <Select value={taxType} onValueChange={setTaxType}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select tax type" />
                       </SelectTrigger>
@@ -312,17 +519,29 @@ export function ItemsContent() {
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="openingStock">Opening Stock</Label>
-                    <Input id="openingStock" type="number" placeholder="0" />
+                    <Input
+                      id="openingStock"
+                      type="number"
+                      placeholder="0"
+                      value={openingStock}
+                      onChange={(e) => setOpeningStock(e.target.value)}
+                    />
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="reorderLevel">Reorder Level</Label>
-                    <Input id="reorderLevel" type="number" placeholder="0" />
+                    <Input
+                      id="reorderLevel"
+                      type="number"
+                      placeholder="0"
+                      value={reorderLevel}
+                      onChange={(e) => setReorderLevel(e.target.value)}
+                    />
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="grid gap-2">
                     <Label htmlFor="warehouse">Warehouse</Label>
-                    <Select>
+                    <Select value={warehouse} onValueChange={setWarehouse}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select warehouse" />
                       </SelectTrigger>
@@ -335,7 +554,7 @@ export function ItemsContent() {
                   </div>
                   <div className="grid gap-2">
                     <Label htmlFor="unit">Unit of Measure</Label>
-                    <Select>
+                    <Select value={unitOfMeasure} onValueChange={setUnitOfMeasure}>
                       <SelectTrigger>
                         <SelectValue placeholder="Select unit" />
                       </SelectTrigger>
@@ -356,48 +575,55 @@ export function ItemsContent() {
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h4 className="text-sm font-medium">Dynamic Fields (JSONB)</h4>
+                    <h4 className="text-sm font-medium">Dynamic Fields (JSON)</h4>
                     <p className="text-xs text-muted-foreground">
                       Add custom key-value pairs for this item
                     </p>
                   </div>
-                  <Button variant="outline" size="sm">
+                  <Button variant="outline" size="sm" onClick={handleAddAttribute}>
                     <Plus className="mr-2 h-4 w-4" />
                     Add Field
                   </Button>
                 </div>
 
                 <div className="space-y-3">
-                  {/* Example dynamic fields */}
-                  <div className="flex items-center gap-3">
-                    <Input placeholder="Key" defaultValue="Expiry" className="flex-1" />
-                    <Input placeholder="Value" defaultValue="2026-12-31" className="flex-1" />
-                    <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Input placeholder="Key" defaultValue="Batch" className="flex-1" />
-                    <Input placeholder="Value" defaultValue="BTH-2024-001" className="flex-1" />
-                    <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <Input placeholder="Key" defaultValue="Rack" className="flex-1" />
-                    <Input placeholder="Value" defaultValue="A-12" className="flex-1" />
-                    <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0">
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  {customAttributes.map((attr, index) => (
+                    <div key={index} className="flex items-center gap-3">
+                      <Input
+                        placeholder="Key (e.g., Expiry, Batch)"
+                        value={attr.key}
+                        onChange={(e) => handleAttributeChange(index, "key", e.target.value)}
+                        className="flex-1"
+                      />
+                      <Input
+                        placeholder="Value"
+                        value={attr.value}
+                        onChange={(e) => handleAttributeChange(index, "value", e.target.value)}
+                        className="flex-1"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-9 w-9 shrink-0"
+                        onClick={() => handleRemoveAttribute(index)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
                 </div>
               </div>
             </TabsContent>
           </Tabs>
 
           <DialogFooter className="mt-6">
-            <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button onClick={() => setIsModalOpen(false)}>Save Item</Button>
+            <Button variant="outline" onClick={handleCloseModal}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveItem} disabled={isLoading}>
+              {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isLoading ? "Saving..." : "Save Item"}
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -465,7 +691,9 @@ export function ItemsContent() {
             </div>
           </div>
           <SheetFooter>
-            <Button className="w-full" onClick={() => setIsSheetOpen(false)}>Apply Adjustment</Button>
+            <Button className="w-full" onClick={() => setIsSheetOpen(false)}>
+              Apply Adjustment
+            </Button>
           </SheetFooter>
         </SheetContent>
       </Sheet>
