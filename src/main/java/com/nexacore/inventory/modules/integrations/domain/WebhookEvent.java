@@ -12,7 +12,7 @@ import java.time.LocalDateTime;
 @Table(name = "webhook_events", indexes = {
     @Index(name = "idx_idempotency_key", columnList = "idempotency_key", unique = true),
     @Index(name = "idx_event_type", columnList = "event_type"),
-    @Index(name = "idx_status", columnList = "status")
+    @Index(name = "idx_webhook_events_status", columnList = "status")
 })
 @Data
 @NoArgsConstructor
@@ -29,7 +29,7 @@ public class WebhookEvent {
     @Column(nullable = false)
     private String eventType; // e.g., "sales.order.created"
 
-    @Column(nullable = false, columnDefinition = "LONGTEXT")
+    @Column(nullable = false, columnDefinition = "TEXT")
     private String payload;
 
     @Column(nullable = false)

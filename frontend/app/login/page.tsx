@@ -13,18 +13,58 @@ export default function AuthPage() {
   const [authMode, setAuthMode] = useState<"login" | "register">("login")
   const [showPassword, setShowPassword] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [identifier, setIdentifier] = useState("")
+  const [fullName, setFullName] = useState("")
+  const [companyName, setCompanyName] = useState("")
+  const [password, setPassword] = useState("")
+  const [error, setError] = useState("")
   const router = useRouter()
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError("")
     setIsLoading(true)
-   
-    // Simulate authentication/registration delay
-    setTimeout(() => {
-      setIsLoading(false)
-      console.log(`${authMode === "login" ? "Logging in" : "Registering"}...`)
+
+    try {
+      const isRegister = authMode === "register"
+      const endpoint = isRegister ? "register" : "login"
+      const username = identifier.includes("@") ? identifier.split("@")[0] : identifier
+
+      const payload = isRegister
+        ? {
+            username: username.trim(),
+            fullName: fullName.trim(),
+            companyName: companyName.trim(),
+            email: identifier.trim(),
+            password: password.trim(),
+          }
+        : { username: identifier.trim(), password: password.trim() }
+
+      const response = await fetch(`http://localhost:8080/api/v1/auth/${endpoint}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(payload),
+      })
+
+      if (!response.ok) {
+        const text = await response.text()
+        throw new Error(text || (isRegister ? "Registration failed" : "Login failed"))
+      }
+
+      const data = await response.json()
+      if (!data?.token) {
+        throw new Error("Token not returned from server")
+      }
+
+      localStorage.setItem("token", data.token)
       router.push("/")
-    }, 1500)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : authMode === "register" ? "Registration failed" : "Login failed")
+    } finally {
+      setIsLoading(false)
+    }
   }
 
   return (
@@ -79,6 +119,8 @@ export default function AuthPage() {
                         type="text" 
                         placeholder="John Doe" 
                         className="pl-10 h-11 border-slate-300 focus-visible:ring-[#1c1f26]"
+                        value={fullName}
+                        onChange={(e) => setFullName(e.target.value)}
                         required
                       />
                     </div>
@@ -92,6 +134,8 @@ export default function AuthPage() {
                         type="text" 
                         placeholder="Acme Corp" 
                         className="pl-10 h-11 border-slate-300 focus-visible:ring-[#1c1f26]"
+                        value={companyName}
+                        onChange={(e) => setCompanyName(e.target.value)}
                         required
                       />
                     </div>
@@ -101,14 +145,18 @@ export default function AuthPage() {
 
               {/* Shared Fields */}
               <div className="space-y-2">
-                <Label htmlFor="email" className="text-sm font-medium text-slate-700">Email Address</Label>
+                <Label htmlFor="email" className="text-sm font-medium text-slate-700">
+                  {authMode === "login" ? "Username" : "Email Address"}
+                </Label>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                   <Input 
                     id="email"
-                    type="email" 
-                    placeholder="name@company.com" 
+                    type={authMode === "login" ? "text" : "email"}
+                    placeholder={authMode === "login" ? "admin" : "name@company.com"}
                     className="pl-10 h-11 border-slate-300 focus-visible:ring-[#1c1f26]"
+                    value={identifier}
+                    onChange={(e) => setIdentifier(e.target.value)}
                     required
                   />
                 </div>
@@ -130,6 +178,8 @@ export default function AuthPage() {
                     type={showPassword ? "text" : "password"} 
                     placeholder="••••••••" 
                     className="pl-10 h-11 border-slate-300 focus-visible:ring-[#1c1f26]"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     required
                   />
                   <button 
@@ -167,6 +217,12 @@ export default function AuthPage() {
                   authMode === "login" ? "Sign In to Dashboard" : "Register Account"
                 )}
               </Button>
+
+              {error && (
+                <p className="text-sm text-red-600" role="alert">
+                  {error}
+                </p>
+              )}
             </form>
 
             <div className="mt-8 pt-6 border-t border-slate-100 text-center">

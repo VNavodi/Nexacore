@@ -158,16 +158,16 @@ public class WebhookIntegrationController {
         return ResponseEntity.status(HttpStatus.CREATED).body("{}");
     }
 
-    @PutMapping("/products/{id}")
-    public ResponseEntity<?> updateProduct(@PathVariable Long id, @RequestBody Object product) {
-        log.info("Updating product: {}", id);
+    @PutMapping("/integrations/products/{id}")
+    public ResponseEntity<?> updateIntegrationProduct(@PathVariable Long id, @RequestBody Object product) {
+        log.info("Updating integration product: {}", id);
         // TODO: Implement product update
         return ResponseEntity.ok("{}");
     }
 
-    @DeleteMapping("/products/{id}")
-    public ResponseEntity<?> deleteProduct(@PathVariable Long id) {
-        log.info("Deleting product: {}", id);
+    @DeleteMapping("/integrations/products/{id}")
+    public ResponseEntity<?> deleteIntegrationProduct(@PathVariable Long id) {
+        log.info("Deleting integration product: {}", id);
         // TODO: Implement product deletion
         return ResponseEntity.noContent().build();
     }

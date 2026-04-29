@@ -11,8 +11,8 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "sync_logs", indexes = {
     @Index(name = "idx_source", columnList = "source"),
-    @Index(name = "idx_status", columnList = "status"),
-    @Index(name = "idx_synced_at", columnList = "syncedAt")
+    @Index(name = "idx_sync_logs_status", columnList = "status"),
+    @Index(name = "idx_sync_logs_synced_at", columnList = "synced_at")
 })
 @Data
 @NoArgsConstructor
@@ -38,7 +38,7 @@ public class SyncLog {
     @Builder.Default
     private Integer conflictsDetected = 0;
 
-    @Column(columnDefinition = "LONGTEXT")
+    @Column(columnDefinition = "TEXT")
     private String details;
 
     @Column(nullable = false)
