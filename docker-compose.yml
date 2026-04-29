@@ -1,7 +1,7 @@
 services:
   nexacore-api:
     build: .
-    container_name: nexacore-inventory-api
+    # container_name removed to avoid confusion; use service name 'nexacore-api' for Docker Compose commands
     ports:
       - "8080:8080"
     environment:
@@ -16,7 +16,7 @@ services:
 
   nexacore-db:
     image: postgres:16-alpine
-    container_name: nexacore-postgres
+    # container_name removed to avoid confusion; use service name 'nexacore-db' for Docker Compose commands
     ports:
       - "5432:5432"
     environment:

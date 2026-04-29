@@ -63,8 +63,8 @@ public class Product {
     @NotNull
     private Integer stockQuantity;
 
-    // Custom attributes stored as JSON
-    @Column(columnDefinition = "json")
+    // Keep entity type aligned with PostgreSQL column type used in deployed DB.
+    @Column(columnDefinition = "jsonb")
     private String customAttributes;
 
     @CreationTimestamp

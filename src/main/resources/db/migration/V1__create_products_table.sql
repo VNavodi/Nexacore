@@ -16,5 +16,6 @@ CREATE TABLE IF NOT EXISTS products (
     reorder_level INTEGER,
     warehouse VARCHAR(100),
     unit_of_measure VARCHAR(50),
-    custom_attributes JSONB
+    custom_attributes JSON
 );
+    
