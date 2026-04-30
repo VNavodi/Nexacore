@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react"
 import { Search, Download, Plus, Pencil, Trash2, Settings2, Loader2 } from "lucide-react"
+import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -63,8 +64,6 @@ export function ItemsContent() {
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
   const [isTableLoading, setIsTableLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [success, setSuccess] = useState<string | null>(null)
   const [isGeneratingSku, setIsGeneratingSku] = useState(false)
   const [products, setProducts] = useState<ProductResponse[]>([])
   const [searchQuery, setSearchQuery] = useState("")
@@ -92,7 +91,7 @@ export function ItemsContent() {
       const data = await ProductAPI.getAllProducts()
       setProducts(data)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to fetch products")
+      toast.error(err instanceof Error ? err.message : "Failed to fetch products")
     } finally {
       setIsTableLoading(false)
     }
@@ -140,37 +139,33 @@ export function ItemsContent() {
 
   const validateForm = (): boolean => {
     if (!sku.trim()) {
-      setError("SKU is required")
+      toast.error("SKU is required")
       return false
     }
     if (!itemName.trim()) {
-      setError("Item name is required")
+      toast.error("Item name is required")
       return false
     }
     if (!category) {
-      setError("Category is required")
+      toast.error("Category is required")
       return false
     }
     if (!costPrice || isNaN(parseFloat(costPrice))) {
-      setError("Valid cost price is required")
+      toast.error("Valid cost price is required")
       return false
     }
     if (!sellingPrice || isNaN(parseFloat(sellingPrice))) {
-      setError("Valid selling price is required")
+      toast.error("Valid selling price is required")
       return false
     }
     if (!openingStock || isNaN(parseInt(openingStock))) {
-      setError("Valid opening stock quantity is required")
+      toast.error("Valid opening stock quantity is required")
       return false
     }
-    setError(null)
     return true
   }
 
   const handleSaveItem = async () => {
-    setError(null)
-    setSuccess(null)
-
     if (!validateForm()) {
       return
     }
@@ -189,16 +184,14 @@ export function ItemsContent() {
       }
 
       await ProductAPI.createProduct(productRequest)
-      setSuccess("Product created successfully!")
+      toast.success("Item created successfully!", {
+        description: `${itemName.trim()} has been added to inventory.`,
+      })
       await loadProducts()
-
-      // Reset form
       resetForm()
       setIsModalOpen(false)
-
-      // Optionally refresh the product list here
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to save product")
+      toast.error(err instanceof Error ? err.message : "Failed to save product")
     } finally {
       setIsLoading(false)
     }
@@ -212,8 +205,6 @@ export function ItemsContent() {
     setSellingPrice("")
     setOpeningStock("")
     setReorderLevel("")
-    setError(null)
-    setSuccess(null)
   }
 
   const handleCloseModal = () => {
@@ -240,33 +231,29 @@ export function ItemsContent() {
   }
 
   const handleApplyAdjustment = async () => {
-    setError(null)
-    setSuccess(null)
-
-    const enteredSku = adjustSku.trim()
-    if (!enteredSku) {
-      setError("SKU is required for stock adjustment")
+    const normalizedSku = adjustSku.trim()
+    if (!normalizedSku) {
+      toast.error("SKU is required for stock adjustment")
       return
     }
     if (!matchedAdjustmentItem) {
-      setError("No item found for the entered SKU")
+      toast.error("No item found for the entered SKU")
       return
     }
     const parsedAdjustment = Number.parseInt(adjustmentValue, 10)
     if (!adjustmentValue || Number.isNaN(parsedAdjustment) || parsedAdjustment === 0) {
-      setError("Enter a valid non-zero adjustment value")
+      toast.error("Enter a valid non-zero adjustment value")
       return
     }
     if (!adjustReason) {
-      setError("Please select a reason")
+      toast.error("Please select a reason")
       return
     }
 
     setIsAdjustingStock(true)
     try {
       const request: StockAdjustmentRequest = {
-        // Always send the exact SKU stored in backend to avoid case mismatch failures.
-        sku: matchedAdjustmentItem.sku,
+        sku: normalizedSku,
         quantity: parsedAdjustment,
         operation: "adjustment",
         reason: adjustReason,
@@ -274,11 +261,13 @@ export function ItemsContent() {
       }
       await ProductAPI.adjustStock(request)
       await loadProducts()
-      setSuccess(`Stock adjusted for ${matchedAdjustmentItem.name}`)
+      toast.success(`Stock adjusted for ${matchedAdjustmentItem.name}`, {
+        description: `New stock on hand has been updated.`,
+      })
       resetAdjustmentForm()
       setIsSheetOpen(false)
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to apply stock adjustment")
+      toast.error(err instanceof Error ? err.message : "Failed to apply stock adjustment")
     } finally {
       setIsAdjustingStock(false)
     }
@@ -291,17 +280,7 @@ export function ItemsContent() {
         <h1 className="text-xl font-semibold text-foreground">Items & Stock</h1>
       </div>
 
-      {/* Success/Error Messages */}
-      {success && (
-        <div className="p-4 bg-green-50 border border-green-200 text-green-800 rounded-md">
-          {success}
-        </div>
-      )}
-      {error && (
-        <div className="p-4 bg-red-50 border border-red-200 text-red-800 rounded-md">
-          {error}
-        </div>
-      )}
+
 
       {/* Toolbar */}
       <Card>

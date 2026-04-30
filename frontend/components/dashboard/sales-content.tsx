@@ -1,6 +1,7 @@
 "use client"
 
 import { useState } from "react"
+import { toast } from "sonner"
 import {
   Plus,
   Trash2,
@@ -213,13 +214,13 @@ export function SalesContent() {
 
   const handleConfirmSale = async () => {
     if (!customerName) {
-      alert("Please enter customer name");
-      return;
+      toast.error("Please enter customer name")
+      return
     }
 
     if (invoiceItems.length === 0) {
-      alert("Please add at least one item.");
-      return;
+      toast.error("Please add at least one item.")
+      return
     }
 
     const hasInvalidItem = invoiceItems.some(
@@ -227,8 +228,8 @@ export function SalesContent() {
     )
 
     if (hasInvalidItem) {
-      alert("Each item must have a name, quantity, and unit price.");
-      return;
+      toast.error("Each item must have a name, quantity, and unit price.")
+      return
     }
 
     const payload = {
@@ -249,18 +250,19 @@ export function SalesContent() {
     try {
       const response = await postInvoiceWithFallback(payload)
       if (response.ok) {
-        alert("Sale confirmed and saved successfully!");
-        // Reset form
-        setCustomerName("");
-        setInvoiceNumber(`INV-${Date.now()}`);
-        setInvoiceItems([]);
+        toast.success("Sale confirmed!", {
+          description: `Invoice ${invoiceNumber} has been saved successfully.`,
+        })
+        setCustomerName("")
+        setInvoiceNumber(`INV-${Date.now()}`)
+        setInvoiceItems([])
       } else {
-        const errorText = await response.text();
-        alert(errorText || "Failed to save invoice.");
+        const errorText = await response.text()
+        toast.error(errorText || "Failed to save invoice.")
       }
     } catch (error) {
-      console.error("Error saving invoice:", error);
-      alert("Error saving invoice.");
+      console.error("Error saving invoice:", error)
+      toast.error("Error saving invoice.")
     }
   }
 
