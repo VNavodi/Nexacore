@@ -44,23 +44,6 @@ import {
 } from "@/components/ui/collapsible"
 import { FieldGroup, Field, FieldLabel } from "@/components/ui/field"
 
-// Sample data for items dropdown
-const sampleItems = [
-  { id: "1", name: "Cotton T-Shirt", price: 1500 },
-  { id: "2", name: "Denim Jeans", price: 3500 },
-  { id: "3", name: "Sneakers", price: 8500 },
-  { id: "4", name: "Leather Belt", price: 2000 },
-  { id: "5", name: "Sunglasses", price: 4500 },
-]
-
-// Sample customers
-const sampleCustomers = [
-  { id: "1", name: "Zylker Retail" },
-  { id: "2", name: "ABC Trading Co." },
-  { id: "3", name: "Fashion Hub" },
-  { id: "4", name: "Metro Stores" },
-]
-
 // Sample credit ledger data
 const creditLedgerData = [
   {
@@ -105,53 +88,80 @@ const creditLedgerData = [
   },
 ]
 
+const SALES_API_BASE_URLS = process.env.NEXT_PUBLIC_API_URL
+  ? [process.env.NEXT_PUBLIC_API_URL]
+  : ["http://localhost:8081/api", "http://localhost:8080/api"]
+
 interface InvoiceItem {
   id: string
-  itemId: string
   itemName: string
   qty: number
   unitPrice: number
   discount: number
-  tax: string
   lineTotal: number
 }
 
 export function SalesContent() {
-  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([
-    {
-      id: "1",
-      itemId: "1",
-      itemName: "Cotton T-Shirt",
-      qty: 10,
-      unitPrice: 1500,
-      discount: 5,
-      tax: "VAT",
-      lineTotal: 14250,
-    },
-    {
-      id: "2",
-      itemId: "3",
-      itemName: "Sneakers",
-      qty: 5,
-      unitPrice: 8500,
-      discount: 0,
-      tax: "VAT",
-      lineTotal: 42500,
-    },
-  ])
-  const [taxBreakdownOpen, setTaxBreakdownOpen] = useState(false)
+  const getAuthHeaders = () => {
+    const headers: Record<string, string> = {}
+    if (typeof window !== "undefined") {
+      const token = localStorage.getItem("token")
+      if (token) headers.Authorization = `Bearer ${token}`
+    }
+    return headers
+  }
+
+  const postInvoiceWithFallback = async (payload: unknown) => {
+    let lastResponse: Response | null = null
+    let lastError: Error | null = null
+
+    for (let i = 0; i < SALES_API_BASE_URLS.length; i++) {
+      const baseUrl = SALES_API_BASE_URLS[i]
+      try {
+        const response = await fetch(`${baseUrl}/invoices`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...getAuthHeaders(),
+          },
+          body: JSON.stringify(payload),
+        })
+        lastResponse = response
+
+        const shouldRetry =
+          i < SALES_API_BASE_URLS.length - 1 &&
+          !process.env.NEXT_PUBLIC_API_URL &&
+          (response.status === 403 || response.status >= 500)
+
+        if (shouldRetry) continue
+        return response
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error("Network request failed")
+        if (i === SALES_API_BASE_URLS.length - 1) {
+          break
+        }
+      }
+    }
+
+    if (lastResponse) return lastResponse
+    throw lastError ?? new Error("Unable to reach invoice API")
+  }
+
+  const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([])
   const [paymentModalOpen, setPaymentModalOpen] = useState(false)
   const [selectedCustomerForPayment, setSelectedCustomerForPayment] = useState("")
+
+  const [customerName, setCustomerName] = useState("")
+  const [invoiceNumber, setInvoiceNumber] = useState(`INV-${Date.now()}`)
+  const [invoiceDate, setInvoiceDate] = useState(() => new Date().toISOString().split('T')[0])
 
   const addInvoiceItem = () => {
     const newItem: InvoiceItem = {
       id: Date.now().toString(),
-      itemId: "",
       itemName: "",
-      qty: 1,
+      qty: 0,
       unitPrice: 0,
       discount: 0,
-      tax: "None",
       lineTotal: 0,
     }
     setInvoiceItems([...invoiceItems, newItem])
@@ -167,15 +177,6 @@ export function SalesContent() {
         if (item.id === id) {
           const updatedItem = { ...item, [field]: value }
           
-          // If selecting an item, update price
-          if (field === "itemId") {
-            const selectedItem = sampleItems.find((i) => i.id === value)
-            if (selectedItem) {
-              updatedItem.itemName = selectedItem.name
-              updatedItem.unitPrice = selectedItem.price
-            }
-          }
-          
           // Recalculate line total
           const subtotal = updatedItem.qty * updatedItem.unitPrice
           const discountAmount = subtotal * (updatedItem.discount / 100)
@@ -188,11 +189,86 @@ export function SalesContent() {
     )
   }
 
-  const subtotal = invoiceItems.reduce((sum, item) => sum + item.lineTotal, 0)
-  const vatItems = invoiceItems.filter((item) => item.tax === "VAT")
-  const vatAmount = vatItems.reduce((sum, item) => sum + item.lineTotal * 0.15, 0)
-  const sscl = subtotal * 0.025
-  const grandTotal = subtotal + vatAmount + sscl
+  const parseNumber = (value: string) => {
+    if (value.trim() === "") return 0
+    const parsed = Number(value)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const parseInteger = (value: string) => {
+    if (value.trim() === "") return 0
+    const parsed = Number.parseInt(value, 10)
+    return Number.isFinite(parsed) ? parsed : 0
+  }
+
+  const subtotalBeforeDiscount = invoiceItems.reduce(
+    (sum, item) => sum + item.qty * item.unitPrice,
+    0
+  )
+  const discountAmount = invoiceItems.reduce(
+    (sum, item) => sum + (item.qty * item.unitPrice * item.discount) / 100,
+    0
+  )
+  const grandTotal = subtotalBeforeDiscount - discountAmount
+
+  const handleConfirmSale = async () => {
+    if (!customerName) {
+      alert("Please enter customer name");
+      return;
+    }
+
+    if (invoiceItems.length === 0) {
+      alert("Please add at least one item.");
+      return;
+    }
+
+    const hasInvalidItem = invoiceItems.some(
+      (item) => !item.itemName.trim() || item.qty <= 0 || item.unitPrice <= 0
+    )
+
+    if (hasInvalidItem) {
+      alert("Each item must have a name, quantity, and unit price.");
+      return;
+    }
+
+    const payload = {
+      customerName,
+      invoiceNumber,
+      invoiceDate,
+      subtotal: subtotalBeforeDiscount,
+      grandTotal,
+      items: invoiceItems.map(item => ({
+        itemName: item.itemName,
+        qty: item.qty,
+        unitPrice: item.unitPrice,
+        discount: item.discount,
+        lineTotal: item.lineTotal
+      }))
+    };
+
+    try {
+      const response = await postInvoiceWithFallback(payload)
+      if (response.ok) {
+        alert("Sale confirmed and saved successfully!");
+        // Reset form
+        setCustomerName("");
+        setInvoiceNumber(`INV-${Date.now()}`);
+        setInvoiceItems([]);
+      } else {
+        const errorText = await response.text();
+        alert(errorText || "Failed to save invoice.");
+      }
+    } catch (error) {
+      console.error("Error saving invoice:", error);
+      alert("Error saving invoice.");
+    }
+  }
+
+  const handleCancel = () => {
+    setCustomerName("");
+    setInvoiceNumber(`INV-${Date.now()}`);
+    setInvoiceItems([]);
+  }
 
   const openPaymentModal = (customer: string) => {
     setSelectedCustomerForPayment(customer)
@@ -221,45 +297,36 @@ export function SalesContent() {
         </CardHeader>
         <CardContent className="space-y-6">
           {/* Invoice Header */}
-          <div className="grid grid-cols-4 gap-4">
+          <div className="grid grid-cols-3 gap-4">
             <FieldGroup>
               <Field>
                 <FieldLabel>Customer</FieldLabel>
-                <Select defaultValue="1">
-                  <SelectTrigger>
-                    <SelectValue placeholder="Select customer" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {sampleCustomers.map((customer) => (
-                      <SelectItem key={customer.id} value={customer.id}>
-                        {customer.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <Input 
+                  value={customerName} 
+                  onChange={(e) => setCustomerName(e.target.value)} 
+                  placeholder="Enter customer name" 
+                />
               </Field>
             </FieldGroup>
 
             <FieldGroup>
               <Field>
                 <FieldLabel>Invoice #</FieldLabel>
-                <Input value="INV-2024-0042" disabled className="bg-muted" />
+                <Input value={invoiceNumber} disabled className="bg-muted" />
               </Field>
             </FieldGroup>
 
             <FieldGroup>
               <Field>
                 <FieldLabel>Date</FieldLabel>
-                <Input type="date" defaultValue="2024-01-15" />
+                <Input 
+                  type="date" 
+                  value={invoiceDate}
+                  onChange={(e) => setInvoiceDate(e.target.value)}
+                />
               </Field>
             </FieldGroup>
 
-            <FieldGroup>
-              <Field>
-                <FieldLabel>Due Date</FieldLabel>
-                <Input type="date" defaultValue="2024-02-15" />
-              </Field>
-            </FieldGroup>
           </div>
 
           {/* Items Table */}
@@ -271,7 +338,6 @@ export function SalesContent() {
                   <TableHead className="w-[80px]">Qty</TableHead>
                   <TableHead className="w-[120px]">Unit Price</TableHead>
                   <TableHead className="w-[100px]">Discount %</TableHead>
-                  <TableHead className="w-[120px]">Tax</TableHead>
                   <TableHead className="w-[120px] text-right">Line Total</TableHead>
                   <TableHead className="w-[50px]"></TableHead>
                 </TableRow>
@@ -280,39 +346,32 @@ export function SalesContent() {
                 {invoiceItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <Select
-                        value={item.itemId}
-                        onValueChange={(value) => updateInvoiceItem(item.id, "itemId", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select item" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {sampleItems.map((sampleItem) => (
-                            <SelectItem key={sampleItem.id} value={sampleItem.id}>
-                              {sampleItem.name}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <Input
+                        value={item.itemName}
+                        onChange={(e) => updateInvoiceItem(item.id, "itemName", e.target.value)}
+                        placeholder="Enter item name"
+                      />
                     </TableCell>
                     <TableCell>
                       <Input
                         type="number"
-                        value={item.qty}
+                        placeholder="Qty"
+                        value={item.qty === 0 ? "" : item.qty}
                         onChange={(e) =>
-                          updateInvoiceItem(item.id, "qty", parseInt(e.target.value) || 0)
+                          updateInvoiceItem(item.id, "qty", parseInteger(e.target.value))
                         }
                         className="w-full"
                         min={1}
+                        step={1}
                       />
                     </TableCell>
                     <TableCell>
                       <Input
                         type="number"
-                        value={item.unitPrice}
+                        placeholder="Unit price"
+                        value={item.unitPrice === 0 ? "" : item.unitPrice}
                         onChange={(e) =>
-                          updateInvoiceItem(item.id, "unitPrice", parseFloat(e.target.value) || 0)
+                          updateInvoiceItem(item.id, "unitPrice", parseNumber(e.target.value))
                         }
                         className="w-full"
                       />
@@ -320,30 +379,15 @@ export function SalesContent() {
                     <TableCell>
                       <Input
                         type="number"
-                        value={item.discount}
+                        placeholder="Discount %"
+                        value={item.discount === 0 ? "" : item.discount}
                         onChange={(e) =>
-                          updateInvoiceItem(item.id, "discount", parseFloat(e.target.value) || 0)
+                          updateInvoiceItem(item.id, "discount", parseNumber(e.target.value))
                         }
                         className="w-full"
                         min={0}
                         max={100}
                       />
-                    </TableCell>
-                    <TableCell>
-                      <Select
-                        value={item.tax}
-                        onValueChange={(value) => updateInvoiceItem(item.id, "tax", value)}
-                      >
-                        <SelectTrigger>
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="None">None</SelectItem>
-                          <SelectItem value="VAT">VAT (15%)</SelectItem>
-                          <SelectItem value="SSCL">SSCL (2.5%)</SelectItem>
-                          <SelectItem value="PAL">PAL (5%)</SelectItem>
-                        </SelectContent>
-                      </Select>
                     </TableCell>
                     <TableCell className="text-right font-medium">
                       Rs. {item.lineTotal.toLocaleString()}
@@ -373,32 +417,14 @@ export function SalesContent() {
           <div className="flex justify-end">
             <div className="w-80 space-y-3">
               <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Subtotal</span>
-                <span>Rs. {subtotal.toLocaleString()}</span>
+                <span className="text-muted-foreground">Subtotal (Before Discount)</span>
+                <span>Rs. {subtotalBeforeDiscount.toLocaleString()}</span>
               </div>
 
-              <Collapsible open={taxBreakdownOpen} onOpenChange={setTaxBreakdownOpen}>
-                <CollapsibleTrigger asChild>
-                  <Button variant="ghost" size="sm" className="w-full justify-between p-0 h-auto font-normal">
-                    <span className="text-muted-foreground text-sm">Tax Breakdown</span>
-                    {taxBreakdownOpen ? (
-                      <ChevronUp className="h-4 w-4" />
-                    ) : (
-                      <ChevronDown className="h-4 w-4" />
-                    )}
-                  </Button>
-                </CollapsibleTrigger>
-                <CollapsibleContent className="space-y-2 pt-2">
-                  <div className="flex justify-between text-sm pl-4">
-                    <span className="text-muted-foreground">VAT (15%)</span>
-                    <span>Rs. {vatAmount.toLocaleString()}</span>
-                  </div>
-                  <div className="flex justify-between text-sm pl-4">
-                    <span className="text-muted-foreground">SSCL (2.5%)</span>
-                    <span>Rs. {sscl.toLocaleString()}</span>
-                  </div>
-                </CollapsibleContent>
-              </Collapsible>
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Discount Amount</span>
+                <span>- Rs. {discountAmount.toLocaleString()}</span>
+              </div>
 
               <div className="border-t pt-3">
                 <div className="flex justify-between">
@@ -411,11 +437,8 @@ export function SalesContent() {
 
           {/* Action Buttons */}
           <div className="flex justify-end gap-3 border-t pt-4">
-            <Button variant="secondary">Save Draft</Button>
-            <Button variant="outline" className="border-amber-500 text-amber-600 hover:bg-amber-50">
-              Mark as Credit/Udhana
-            </Button>
-            <Button>Generate IRD Invoice</Button>
+            <Button variant="outline" onClick={handleCancel}>Cancel</Button>
+            <Button onClick={handleConfirmSale}>Confirm Sale</Button>
           </div>
         </CardContent>
       </Card>
