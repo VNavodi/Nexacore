@@ -38,7 +38,12 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet"
-import { ProductAPI, ProductRequest, ProductResponse } from "@/lib/api/productAPI"
+import {
+  ProductAPI,
+  ProductRequest,
+  ProductResponse,
+  StockAdjustmentRequest,
+} from "@/lib/api/productAPI"
 
 function getStatusVariant(status: string) {
   switch (status) {
@@ -57,7 +62,7 @@ export function ItemsContent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
-  const [isTableLoading, setIsTableLoading] = useState(false)
+  const [isTableLoading, setIsTableLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isGeneratingSku, setIsGeneratingSku] = useState(false)
@@ -73,9 +78,16 @@ export function ItemsContent() {
   const [sellingPrice, setSellingPrice] = useState("")
   const [openingStock, setOpeningStock] = useState("")
   const [reorderLevel, setReorderLevel] = useState("")
+  const [adjustSku, setAdjustSku] = useState("")
+  const [adjustmentValue, setAdjustmentValue] = useState("")
+  const [adjustReason, setAdjustReason] = useState("")
+  const [adjustNotes, setAdjustNotes] = useState("")
+  const [isAdjustingStock, setIsAdjustingStock] = useState(false)
 
-  const loadProducts = async () => {
-    setIsTableLoading(true)
+  const loadProducts = async (showLoading = true) => {
+    if (showLoading) {
+      setIsTableLoading(true)
+    }
     try {
       const data = await ProductAPI.getAllProducts()
       setProducts(data)
@@ -87,9 +99,8 @@ export function ItemsContent() {
   }
 
   useEffect(() => {
-    // Initial table hydration from backend API.
-    // eslint-disable-next-line react-hooks/set-state-in-effect
-    void loadProducts()
+    // Initial table hydration from backend API without sync state update in effect chain.
+    void loadProducts(false)
   }, [])
 
   const getStockStatus = (stockOnHand: number, reorderLevel: number) => {
@@ -216,6 +227,63 @@ export function ItemsContent() {
     await generateNextSku()
   }
 
+  const matchedAdjustmentItem = useMemo(
+    () => products.find((product) => product.sku.toLowerCase() === adjustSku.trim().toLowerCase()),
+    [products, adjustSku]
+  )
+
+  const resetAdjustmentForm = () => {
+    setAdjustSku("")
+    setAdjustmentValue("")
+    setAdjustReason("")
+    setAdjustNotes("")
+  }
+
+  const handleApplyAdjustment = async () => {
+    setError(null)
+    setSuccess(null)
+
+    const enteredSku = adjustSku.trim()
+    if (!enteredSku) {
+      setError("SKU is required for stock adjustment")
+      return
+    }
+    if (!matchedAdjustmentItem) {
+      setError("No item found for the entered SKU")
+      return
+    }
+    const parsedAdjustment = Number.parseInt(adjustmentValue, 10)
+    if (!adjustmentValue || Number.isNaN(parsedAdjustment) || parsedAdjustment === 0) {
+      setError("Enter a valid non-zero adjustment value")
+      return
+    }
+    if (!adjustReason) {
+      setError("Please select a reason")
+      return
+    }
+
+    setIsAdjustingStock(true)
+    try {
+      const request: StockAdjustmentRequest = {
+        // Always send the exact SKU stored in backend to avoid case mismatch failures.
+        sku: matchedAdjustmentItem.sku,
+        quantity: parsedAdjustment,
+        operation: "adjustment",
+        reason: adjustReason,
+        notes: adjustNotes.trim() || undefined,
+      }
+      await ProductAPI.adjustStock(request)
+      await loadProducts()
+      setSuccess(`Stock adjusted for ${matchedAdjustmentItem.name}`)
+      resetAdjustmentForm()
+      setIsSheetOpen(false)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to apply stock adjustment")
+    } finally {
+      setIsAdjustingStock(false)
+    }
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -290,9 +358,7 @@ export function ItemsContent() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[50px]">
-                  <Checkbox />
-                </TableHead>
+                
                 <TableHead className="w-[120px]">SKU</TableHead>
                 <TableHead>Item Name</TableHead>
                 <TableHead className="w-[140px]">Category</TableHead>
@@ -317,9 +383,7 @@ export function ItemsContent() {
               ) : (
                 filteredProducts.map((item) => (
                 <TableRow key={item.id}>
-                  <TableCell>
-                    <Checkbox />
-                  </TableCell>
+                  
                   <TableCell className="font-mono text-sm">{item.sku}</TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>
@@ -454,28 +518,49 @@ export function ItemsContent() {
           <div className="space-y-4 py-4 px-4">
             <div className="grid gap-2">
               <Label htmlFor="adjustSku">SKU</Label>
-              <Select>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select item SKU" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="SKU-001">SKU-001 - Wireless Headphones</SelectItem>
-                  <SelectItem value="SKU-002">SKU-002 - Organic Green Tea</SelectItem>
-                  <SelectItem value="SKU-003">SKU-003 - Water Bottle</SelectItem>
-                  <SelectItem value="SKU-004">SKU-004 - Cotton T-Shirt</SelectItem>
-                  <SelectItem value="SKU-005">SKU-005 - Vitamin D3</SelectItem>
-                </SelectContent>
-              </Select>
+              <Input
+                id="adjustSku"
+                placeholder="Enter item SKU"
+                value={adjustSku}
+                onChange={(e) => setAdjustSku(e.target.value)}
+              />
+              <p className="text-xs text-muted-foreground">
+              Enter in the format SKU-000. (Example: SKU-001.)                    
+              </p>
+               
+            </div>
+
+            <div className="grid gap-2">
+              <Label htmlFor="itemName">Item Name</Label>
+              <Input
+                id="itemName"
+                value={matchedAdjustmentItem?.name ?? ""}
+                disabled
+                className="bg-muted"
+                placeholder="Item name will appear after SKU match"
+              />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="currentQty">Current Quantity</Label>
-              <Input id="currentQty" value="145" disabled className="bg-muted" />
+              <Input
+                id="currentQty"
+                value={matchedAdjustmentItem?.stockOnHand?.toString() ?? ""}
+                disabled
+                className="bg-muted"
+                placeholder="Current quantity will appear after SKU match"
+              />
             </div>
 
             <div className="grid gap-2">
               <Label htmlFor="adjustment">Adjustment (+/-)</Label>
-              <Input id="adjustment" type="number" placeholder="Enter adjustment value" />
+              <Input
+                id="adjustment"
+                type="number"
+                placeholder="Enter adjustment value"
+                value={adjustmentValue}
+                onChange={(e) => setAdjustmentValue(e.target.value)}
+              />
               <p className="text-xs text-muted-foreground">
                 Use positive values to add stock, negative to reduce
               </p>
@@ -483,7 +568,7 @@ export function ItemsContent() {
 
             <div className="grid gap-2">
               <Label htmlFor="reason">Reason</Label>
-              <Select>
+              <Select value={adjustReason} onValueChange={setAdjustReason}>
                 <SelectTrigger>
                   <SelectValue placeholder="Select reason" />
                 </SelectTrigger>
@@ -504,12 +589,15 @@ export function ItemsContent() {
                 id="notes"
                 placeholder="Add any additional notes..."
                 className="min-h-[100px]"
+                value={adjustNotes}
+                onChange={(e) => setAdjustNotes(e.target.value)}
               />
             </div>
           </div>
           <SheetFooter>
-            <Button className="w-full" onClick={() => setIsSheetOpen(false)}>
-              Apply Adjustment
+            <Button className="w-full" onClick={handleApplyAdjustment} disabled={isAdjustingStock}>
+              {isAdjustingStock && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {isAdjustingStock ? "Applying..." : "Apply Adjustment"}
             </Button>
           </SheetFooter>
         </SheetContent>

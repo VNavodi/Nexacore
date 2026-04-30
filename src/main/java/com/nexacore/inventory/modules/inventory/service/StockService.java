@@ -9,6 +9,8 @@ import com.nexacore.inventory.modules.inventory.repository.ProductRepository;
 import com.nexacore.inventory.modules.inventory.dto.StockAdjustmentRequest;
 import com.nexacore.inventory.modules.inventory.model.StockMovement;
 import com.nexacore.inventory.modules.inventory.repository.StockMovementRepository;
+import com.nexacore.inventory.modules.inventory.model.StockAdjustment;
+import com.nexacore.inventory.modules.inventory.repository.StockAdjustmentRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,10 +22,12 @@ public class StockService {
 
     private final ProductRepository productRepository;
     private final StockMovementRepository stockMovementRepository;
+    private final StockAdjustmentRepository stockAdjustmentRepository;
 
-    public StockService(ProductRepository productRepository, StockMovementRepository stockMovementRepository) {
+    public StockService(ProductRepository productRepository, StockMovementRepository stockMovementRepository, StockAdjustmentRepository stockAdjustmentRepository) {
         this.productRepository = productRepository;
         this.stockMovementRepository = stockMovementRepository;
+        this.stockAdjustmentRepository = stockAdjustmentRepository;
     }
 
     @Transactional
@@ -39,6 +43,17 @@ public class StockService {
         );
 
         processStockEvent(eventRequest);
+        
+        if (request.reason() != null) {
+            StockAdjustment adjustment = StockAdjustment.builder()
+                .sku(request.sku())
+                .adjustCount(request.quantity())
+                .reason(request.reason())
+                .notes(request.notes())
+                .build();
+            stockAdjustmentRepository.save(adjustment);
+        }
+
         return productRepository.findBySku(request.sku())
             .orElseThrow(() -> new RuntimeException("Product not found with sku: " + request.sku()));
     }

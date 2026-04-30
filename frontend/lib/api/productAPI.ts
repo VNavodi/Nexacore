@@ -19,6 +19,15 @@ export interface ProductRequest {
   reorderLevel: number;
 }
 
+export interface StockAdjustmentRequest {
+  sku: string;
+  quantity: number;
+  operation: string;
+  reason?: string;
+  notes?: string;
+}
+
+
 export interface ProductResponse {
   id: number;
   sku: string;
@@ -47,7 +56,7 @@ export class ProductAPI {
         const shouldRetry =
           i < API_BASE_URLS.length - 1 &&
           !API_BASE_URL &&
-          (response.status === 403 || response.status >= 500)
+          (response.status === 403 || response.status === 404 || response.status === 405 || response.status >= 500)
 
         if (shouldRetry) {
           continue
@@ -248,6 +257,26 @@ export class ProductAPI {
 
     if (!response.ok) {
       const message = await this.getErrorMessage(response, "Failed to fetch low stock products")
+      throw new Error(message)
+    }
+
+    return response.json()
+  }
+  /**
+   * Adjust stock for a product
+   */
+  static async adjustStock(data: StockAdjustmentRequest): Promise<ProductResponse> {
+    const response = await this.requestWithFallback("/inventory/stock-adjustments", {
+      method: "PATCH",
+      headers: {
+        "Content-Type": "application/json",
+        ...this.getAuthHeaders(),
+      },
+      body: JSON.stringify(data),
+    })
+
+    if (!response.ok) {
+      const message = await this.getErrorMessage(response, "Failed to adjust stock")
       throw new Error(message)
     }
 

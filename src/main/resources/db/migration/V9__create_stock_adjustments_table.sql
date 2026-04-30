@@ -1,0 +1,8 @@
+CREATE TABLE IF NOT EXISTS stock_adjustments (
+    id BIGSERIAL PRIMARY KEY,
+    sku VARCHAR(100) NOT NULL,
+    adjust_count INTEGER NOT NULL,
+    reason VARCHAR(255) NOT NULL,
+    notes TEXT,
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
