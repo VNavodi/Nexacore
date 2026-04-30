@@ -366,7 +366,7 @@ export function ItemsContent() {
               <Label htmlFor="sku">SKU Code</Label>
               <Input id="sku" value={sku} disabled className="bg-muted" />
               <p className="text-xs text-muted-foreground">
-                Auto-generated in format SKU-001
+                Auto-generated 
               </p>
             </div>
             <div className="grid gap-2">

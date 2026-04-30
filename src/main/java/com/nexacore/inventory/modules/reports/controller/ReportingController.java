@@ -21,7 +21,7 @@ public class ReportingController {
     @GetMapping("/summary")
     public ResponseEntity<Map<String, Object>> getSummary() {
         long totalProducts = productRepository.count();
-        long lowStockProducts = productRepository.findByStockQuantityLessThan(10).size();
+        long lowStockProducts = productRepository.findByStockOnHandLessThan(10).size();
 
         return ResponseEntity.ok(Map.of(
             "totalProducts", totalProducts,

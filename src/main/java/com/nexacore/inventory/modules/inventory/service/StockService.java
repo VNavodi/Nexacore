@@ -75,7 +75,7 @@ public class StockService {
         Product product = productRepository.findBySku(sku)
             .orElseThrow(() -> new RuntimeException("Product not found with sku: " + sku));
 
-        int actualQuantity = product.getStockQuantity() == null ? 0 : product.getStockQuantity();
+        int actualQuantity = product.getStockOnHand() == null ? 0 : product.getStockOnHand();
         int difference = actualQuantity - expectedQuantity;
         boolean match = difference == 0;
 
@@ -95,7 +95,7 @@ public class StockService {
         Product product = productRepository.findBySku(request.sku())
             .orElseThrow(() -> new RuntimeException("Product not found with sku: " + request.sku()));
 
-        int beforeStock = product.getStockQuantity() == null ? 0 : product.getStockQuantity();
+        int beforeStock = product.getStockOnHand() == null ? 0 : product.getStockOnHand();
         int delta = calculateDelta(request.eventType(), request.quantity());
         int afterStock = beforeStock + delta;
 
@@ -103,7 +103,7 @@ public class StockService {
             throw new IllegalArgumentException("Stock cannot go below zero");
         }
 
-        product.setStockQuantity(afterStock);
+        product.setStockOnHand(afterStock);
         Product savedProduct = productRepository.save(product);
 
         StockMovement movement = StockMovement.builder()
@@ -113,7 +113,7 @@ public class StockService {
             .sku(request.sku())
             .quantity(request.quantity())
             .beforeStock(beforeStock)
-            .afterStock(savedProduct.getStockQuantity())
+            .afterStock(savedProduct.getStockOnHand())
             .occurredAt(request.occurredAt())
             .build();
 
