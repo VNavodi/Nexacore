@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Search, Download, Plus, Pencil, Trash2, Settings2, Loader2 } from "lucide-react"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -38,56 +38,7 @@ import {
   SheetTitle,
   SheetFooter,
 } from "@/components/ui/sheet"
-import { ProductAPI, ProductRequest } from "@/lib/api/productAPI"
-
-// Sample data structure for display
-const sampleItems = [
-  {
-    id: 1,
-    sku: "SKU-001",
-    name: "Wireless Bluetooth Headphones",
-    category: "Electronics",
-    stockOnHand: 145,
-    status: "In Stock",
-    attributes: ["Batch", "Warranty"],
-  },
-  {
-    id: 2,
-    sku: "SKU-002",
-    name: "Organic Green Tea - 100g",
-    category: "Grocery",
-    stockOnHand: 8,
-    status: "Low Stock",
-    attributes: ["Expiry", "Batch"],
-  },
-  {
-    id: 3,
-    sku: "SKU-003",
-    name: "Stainless Steel Water Bottle",
-    category: "Kitchenware",
-    stockOnHand: 0,
-    status: "Out of Stock",
-    attributes: ["Rack"],
-  },
-  {
-    id: 4,
-    sku: "SKU-004",
-    name: "Cotton T-Shirt - Medium",
-    category: "Apparel",
-    stockOnHand: 52,
-    status: "In Stock",
-    attributes: ["Size", "Color"],
-  },
-  {
-    id: 5,
-    sku: "SKU-005",
-    name: "Vitamin D3 Supplements",
-    category: "Health",
-    stockOnHand: 3,
-    status: "Low Stock",
-    attributes: ["Expiry", "Batch", "Rack"],
-  },
-]
+import { ProductAPI, ProductRequest, ProductResponse } from "@/lib/api/productAPI"
 
 function getStatusVariant(status: string) {
   switch (status) {
@@ -106,9 +57,13 @@ export function ItemsContent() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [isSheetOpen, setIsSheetOpen] = useState(false)
   const [isLoading, setIsLoading] = useState(false)
+  const [isTableLoading, setIsTableLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState<string | null>(null)
   const [isGeneratingSku, setIsGeneratingSku] = useState(false)
+  const [products, setProducts] = useState<ProductResponse[]>([])
+  const [searchQuery, setSearchQuery] = useState("")
+  const [categoryFilter, setCategoryFilter] = useState("all")
 
   // Form state
   const [sku, setSku] = useState("SKU-001")
@@ -118,6 +73,41 @@ export function ItemsContent() {
   const [sellingPrice, setSellingPrice] = useState("")
   const [openingStock, setOpeningStock] = useState("")
   const [reorderLevel, setReorderLevel] = useState("")
+
+  const loadProducts = async () => {
+    setIsTableLoading(true)
+    try {
+      const data = await ProductAPI.getAllProducts()
+      setProducts(data)
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to fetch products")
+    } finally {
+      setIsTableLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    // Initial table hydration from backend API.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    void loadProducts()
+  }, [])
+
+  const getStockStatus = (stockOnHand: number, reorderLevel: number) => {
+    if (stockOnHand <= 0) return "Out of Stock"
+    if (reorderLevel > stockOnHand) return "Low Stock"
+    return "In Stock"
+  }
+
+  const filteredProducts = useMemo(() => {
+    return products.filter((product) => {
+      const matchesSearch =
+        product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        product.sku.toLowerCase().includes(searchQuery.toLowerCase())
+      const matchesCategory =
+        categoryFilter === "all" || product.category.toLowerCase() === categoryFilter.toLowerCase()
+      return matchesSearch && matchesCategory
+    })
+  }, [products, searchQuery, categoryFilter])
 
   const generateNextSku = async () => {
     setIsGeneratingSku(true)
@@ -189,6 +179,7 @@ export function ItemsContent() {
 
       await ProductAPI.createProduct(productRequest)
       setSuccess("Product created successfully!")
+      await loadProducts()
 
       // Reset form
       resetForm()
@@ -255,9 +246,11 @@ export function ItemsContent() {
                 <Input
                   placeholder="Search items..."
                   className="pl-9 w-[280px]"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                 />
               </div>
-              <Select>
+              <Select value={categoryFilter} onValueChange={setCategoryFilter}>
                 <SelectTrigger className="w-[180px]">
                   <SelectValue placeholder="All Categories" />
                 </SelectTrigger>
@@ -305,12 +298,24 @@ export function ItemsContent() {
                 <TableHead className="w-[140px]">Category</TableHead>
                 <TableHead className="w-[130px] text-right">Stock on Hand</TableHead>
                 <TableHead className="w-[120px]">Status</TableHead>
-                <TableHead className="w-[200px]">Custom Attributes</TableHead>
                 <TableHead className="w-[100px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {sampleItems.map((item) => (
+              {isTableLoading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    Loading items...
+                  </TableCell>
+                </TableRow>
+              ) : filteredProducts.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                    No items found
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredProducts.map((item) => (
                 <TableRow key={item.id}>
                   <TableCell>
                     <Checkbox />
@@ -322,21 +327,9 @@ export function ItemsContent() {
                     {item.stockOnHand}
                   </TableCell>
                   <TableCell>
-                    <Badge variant={getStatusVariant(item.status)}>
-                      {item.status}
+                    <Badge variant={getStatusVariant(getStockStatus(item.stockOnHand, item.reorderLevel))}>
+                      {getStockStatus(item.stockOnHand, item.reorderLevel)}
                     </Badge>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex flex-wrap gap-1">
-                      {item.attributes.map((attr) => (
-                        <span
-                          key={attr}
-                          className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-muted text-muted-foreground"
-                        >
-                          {attr}
-                        </span>
-                      ))}
-                    </div>
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
@@ -349,7 +342,8 @@ export function ItemsContent() {
                     </div>
                   </TableCell>
                 </TableRow>
-              ))}
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
