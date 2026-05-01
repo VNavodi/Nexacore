@@ -2,6 +2,7 @@
 
 import { useState } from "react"
 import Link from "next/link"
+import Image from "next/image"
 import { usePathname } from "next/navigation"
 import { cn } from "@/lib/utils"
 import {
@@ -47,17 +48,28 @@ export function Sidebar({ onCollapseChange }: SidebarProps) {
         collapsed ? "w-16" : "w-60"
       )}
     >
-      {/* Logo Area */}
-      <div className="flex h-16 items-center border-b border-[#373b41] px-4">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-[#e04f4f]">
-            <Package className="h-5 w-5 text-white" />
-          </div>
-          {!collapsed && (
-            <span className="text-lg font-semibold text-white">Inventory</span>
-        )}
-        </div>
-      </div>
+ {/* Logo Area */}
+<div className="relative flex h-16 items-center justify-between border-b border-[#373b41] px-4">
+  <Image
+    src="/logo.png"
+    alt="Nexacore Logo"
+          width={collapsed ? 32 : 800}  
+          height={400}
+    className="object-cover"
+  />
+  
+  <button
+    onClick={handleCollapse}
+    className="relative z-10 ml-auto flex items-center justify-center rounded-lg p-1.5 text-gray-400 transition-colors hover:bg-[#373b41] hover:text-white"
+    aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+  >
+    {collapsed ? (
+      <ChevronRight className="h-5 w-5" />
+    ) : (
+      <ChevronLeft className="h-5 w-5" />
+    )}
+  </button>
+</div>
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto py-4">
@@ -92,7 +104,7 @@ export function Sidebar({ onCollapseChange }: SidebarProps) {
       </nav>
 
       {/* Collapse Toggle */}
-      <div className="border-t border-[#373b41] p-4">
+      {/* <div className="border-t border-[#373b41] p-4">
           <button
             onClick={handleCollapse}
           className="flex w-full items-center justify-center rounded-lg p-2 text-gray-400 transition-colors hover:bg-[#373b41] hover:text-white"
@@ -104,7 +116,7 @@ export function Sidebar({ onCollapseChange }: SidebarProps) {
             <ChevronLeft className="h-5 w-5" />
         )}
         </button>
-      </div>
+      </div> */}
     </aside>
   )
 }
