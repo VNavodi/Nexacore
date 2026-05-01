@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Search, Download, Plus, Pencil, Trash2, Settings2, Loader2 } from "lucide-react"
+import { Search, Download, Plus, Pencil, Trash2, Settings2, Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -46,16 +46,49 @@ import {
   StockAdjustmentRequest,
 } from "@/lib/api/productAPI"
 
-function getStatusVariant(status: string) {
+function getStockLevelStyle(stockOnHand: number, reorderLevel: number) {
+  if (stockOnHand <= 0) return "bg-red-500 text-white"
+  if (stockOnHand <= reorderLevel) return "bg-red-500 text-white"
+  if (stockOnHand > reorderLevel * 5) return "bg-green-100 text-green-700"
+  return "bg-slate-100 text-slate-700"
+}
+
+function getSyncStatusBadge(status: string) {
   switch (status) {
-    case "In Stock":
-      return "default"
-    case "Low Stock":
-      return "secondary"
-    case "Out of Stock":
-      return "destructive"
+    case "Synced":
+      return (
+        <Badge variant="outline" className="bg-green-50 text-green-600 border-green-200 gap-1 px-2 py-1 h-auto font-medium">
+          <CheckCircle2 className="h-3.5 w-3.5" />
+          Synced
+        </Badge>
+      )
+    case "Sync Failed":
+      return (
+        <button 
+          onClick={() => toast.error("Sync failed: Connection timeout with POS system.", {
+            description: "Click to retry synchronization.",
+            action: {
+              label: "Retry",
+              onClick: () => toast.success("Retrying sync...")
+            }
+          })}
+          className="transition-transform active:scale-95"
+        >
+          <Badge variant="outline" className="bg-red-50 text-red-600 border-red-200 gap-1 px-2 py-1 h-auto font-medium cursor-pointer">
+            <AlertCircle className="h-3.5 w-3.5" />
+            Sync Failed
+          </Badge>
+        </button>
+      )
+    case "Syncing":
+      return (
+        <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 gap-1 px-2 py-1 h-auto font-medium">
+          <RefreshCw className="h-3.5 w-3.5 animate-spin" />
+          Syncing
+        </Badge>
+      )
     default:
-      return "outline"
+      return null
   }
 }
 
@@ -341,8 +374,8 @@ export function ItemsContent() {
                 <TableHead className="w-[120px]">SKU</TableHead>
                 <TableHead>Item Name</TableHead>
                 <TableHead className="w-[140px]">Category</TableHead>
-                <TableHead className="w-[130px] text-right">Stock on Hand</TableHead>
-                <TableHead className="w-[120px]">Status</TableHead>
+                <TableHead className="w-[150px] text-center">Stock Level</TableHead>
+                <TableHead className="w-[140px] text-center">Sync Status</TableHead>
                 <TableHead className="w-[100px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -366,13 +399,17 @@ export function ItemsContent() {
                   <TableCell className="font-mono text-sm">{item.sku}</TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>
-                  <TableCell className="text-right font-medium">
-                    {item.stockOnHand}
+                  <TableCell className="text-center">
+                    <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStockLevelStyle(item.stockOnHand, item.reorderLevel)}`}>
+                      {item.stockOnHand} in stock
+                    </span>
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={getStatusVariant(getStockStatus(item.stockOnHand, item.reorderLevel))}>
-                      {getStockStatus(item.stockOnHand, item.reorderLevel)}
-                    </Badge>
+                  <TableCell className="text-center">
+                    {/* Mocking sync status based on ID for demonstration */}
+                    {getSyncStatusBadge(
+                      item.id % 3 === 0 ? "Synced" : 
+                      item.id % 3 === 1 ? "Sync Failed" : "Syncing"
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
