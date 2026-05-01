@@ -1,7 +1,8 @@
 "use client"
 
 import { useEffect, useMemo, useState } from "react"
-import { Search, Download, Plus, Pencil, Trash2, Settings2, Loader2, CheckCircle2, AlertCircle, RefreshCw } from "lucide-react"
+import { Search, Download, Plus, Pencil, Trash2, Settings2, Loader2, CheckCircle2, AlertCircle, RefreshCw, Barcode } from "lucide-react"
+import JsBarcode from "jsbarcode"
 import { toast } from "sonner"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -115,6 +116,8 @@ export function ItemsContent() {
   const [adjustReason, setAdjustReason] = useState("")
   const [adjustNotes, setAdjustNotes] = useState("")
   const [isAdjustingStock, setIsAdjustingStock] = useState(false)
+  const [barcodeDialogOpen, setBarcodeDialogOpen] = useState(false)
+  const [activeBarcodeItem, setActiveBarcodeItem] = useState<ProductResponse | null>(null)
 
   const loadProducts = async (showLoading = true) => {
     if (showLoading) {
@@ -306,6 +309,50 @@ export function ItemsContent() {
     }
   }
 
+  const handleShowBarcode = (item: ProductResponse) => {
+    setActiveBarcodeItem(item)
+    setBarcodeDialogOpen(true)
+  }
+
+  const downloadBarcode = () => {
+    if (!activeBarcodeItem) return
+
+    const canvas = document.createElement("canvas")
+    JsBarcode(canvas, activeBarcodeItem.sku, {
+      format: "CODE128",
+      lineColor: "#000",
+      width: 2,
+      height: 100,
+      displayValue: true,
+      fontSize: 20,
+      margin: 10,
+      background: "#fff"
+    })
+
+    const link = document.createElement("a")
+    link.href = canvas.toDataURL("image/png")
+    link.download = `barcode_${activeBarcodeItem.sku}.png`
+    link.click()
+    toast.success(`Barcode for ${activeBarcodeItem.sku} downloaded`)
+  }
+
+  useEffect(() => {
+    if (barcodeDialogOpen && activeBarcodeItem) {
+      const timer = setTimeout(() => {
+        const element = document.getElementById("barcode-svg")
+        if (element) {
+          JsBarcode(element, activeBarcodeItem.sku, {
+            format: "CODE128",
+            width: 2,
+            height: 80,
+            displayValue: true,
+          })
+        }
+      }, 100)
+      return () => clearTimeout(timer)
+    }
+  }, [barcodeDialogOpen, activeBarcodeItem])
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
@@ -374,6 +421,7 @@ export function ItemsContent() {
                 <TableHead className="w-[120px]">SKU</TableHead>
                 <TableHead>Item Name</TableHead>
                 <TableHead className="w-[140px]">Category</TableHead>
+                <TableHead className="w-[120px] text-center">Barcode</TableHead>
                 <TableHead className="w-[150px] text-center">Stock Level</TableHead>
                 <TableHead className="w-[140px] text-center">Sync Status</TableHead>
                 <TableHead className="w-[100px] text-right">Actions</TableHead>
@@ -399,6 +447,17 @@ export function ItemsContent() {
                   <TableCell className="font-mono text-sm">{item.sku}</TableCell>
                   <TableCell className="font-medium">{item.name}</TableCell>
                   <TableCell>{item.category}</TableCell>
+                  <TableCell className="text-center">
+                    <Button 
+                      variant="outline" 
+                      size="sm" 
+                      className="h-8 w-8 p-0"
+                      onClick={() => handleShowBarcode(item)}
+                      title="View Barcode"
+                    >
+                      <Barcode className="h-4 w-4" />
+                    </Button>
+                  </TableCell>
                   <TableCell className="text-center">
                     <span className={`px-3 py-1 rounded-full text-xs font-semibold ${getStockLevelStyle(item.stockOnHand, item.reorderLevel)}`}>
                       {item.stockOnHand} in stock
@@ -618,6 +677,33 @@ export function ItemsContent() {
           </SheetFooter>
         </SheetContent>
       </Sheet>
+
+      {/* Barcode Dialog */}
+      <Dialog open={barcodeDialogOpen} onOpenChange={setBarcodeDialogOpen}>
+        <DialogContent className="sm:max-w-[400px]">
+          <DialogHeader>
+            <DialogTitle>Item Barcode</DialogTitle>
+          </DialogHeader>
+          <div className="flex flex-col items-center justify-center p-6 space-y-6">
+            <div className="bg-white p-4 rounded-lg shadow-sm border">
+              <svg id="barcode-svg"></svg>
+            </div>
+            <div className="text-center space-y-1">
+              <p className="font-semibold text-lg">{activeBarcodeItem?.name}</p>
+              <p className="text-sm text-muted-foreground">SKU: {activeBarcodeItem?.sku}</p>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBarcodeDialogOpen(false)}>
+              Close
+            </Button>
+            <Button onClick={downloadBarcode}>
+              <Download className="mr-2 h-4 w-4" />
+              Download PNG
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
