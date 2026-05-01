@@ -27,6 +27,21 @@ export function IntegrationsContent() {
   const [secretKey, setSecretKey] = useState("sk_live_51pX9v..." + Math.random().toString(36).substring(7))
   const [isConnecting, setIsConnecting] = useState(false)
   const [isConnected, setIsConnected] = useState(true)
+  const [autoSyncEnabled, setAutoSyncEnabled] = useState(true)
+
+  useEffect(() => {
+    const savedSync = localStorage.getItem("nexacore_auto_sync_enabled")
+    if (savedSync !== null) {
+      setAutoSyncEnabled(savedSync === "true")
+    }
+  }, [])
+
+  const handleSyncToggle = (checked: boolean) => {
+    setAutoSyncEnabled(checked)
+    localStorage.setItem("nexacore_auto_sync_enabled", String(checked))
+    // Dispatch a custom event to notify other components (like ItemsContent)
+    window.dispatchEvent(new Event("syncSettingsChanged"))
+  }
 
   const handleCopy = (text: string, label: string) => {
     navigator.clipboard.writeText(text)
@@ -130,22 +145,25 @@ export function IntegrationsContent() {
               <div className="grid gap-4">
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Automatic Stock Deduction</Label>
-                    <p className="text-xs text-muted-foreground">Update stock levels instantly when a sale is completed on POS.</p>
+                    <Label>Automatic Stock Update</Label>
+                    <p className="text-xs text-muted-foreground">Item and stock updates sync automatically with the POS system.</p>
+                  </div>
+                  <Switch 
+                    checked={autoSyncEnabled} 
+                    onCheckedChange={handleSyncToggle}
+                  />
+                </div>
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label>Automatic Sale Detection</Label>
+                    <p className="text-xs text-muted-foreground">When a sale happens, data is received here from the POS system.</p>
                   </div>
                   <Switch defaultChecked />
                 </div>
                 <div className="flex items-center justify-between">
                   <div className="space-y-0.5">
-                    <Label>Return Reconciliation</Label>
-                    <p className="text-xs text-muted-foreground">Restock items automatically when marked as "Returned" in POS.</p>
-                  </div>
-                  <Switch defaultChecked />
-                </div>
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label>Conflict Notifications</Label>
-                    <p className="text-xs text-muted-foreground">Notify admins when POS stock differs from system records.</p>
+                    <Label>Automatic Purchases Detection</Label>
+                    <p className="text-xs text-muted-foreground">Sync the purchases.</p>
                   </div>
                   <Switch />
                 </div>

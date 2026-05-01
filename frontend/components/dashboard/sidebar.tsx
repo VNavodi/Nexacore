@@ -55,7 +55,7 @@ export function Sidebar({ onCollapseChange }: SidebarProps) {
           </div>
           {!collapsed && (
             <span className="text-lg font-semibold text-white">Inventory</span>
-          )}
+        )}
         </div>
       </div>
 
@@ -93,16 +93,16 @@ export function Sidebar({ onCollapseChange }: SidebarProps) {
 
       {/* Collapse Toggle */}
       <div className="border-t border-[#373b41] p-4">
-        <button
-          onClick={handleCollapse}
+          <button
+            onClick={handleCollapse}
           className="flex w-full items-center justify-center rounded-lg p-2 text-gray-400 transition-colors hover:bg-[#373b41] hover:text-white"
           aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
-        >
+          >
           {collapsed ? (
             <ChevronRight className="h-5 w-5" />
           ) : (
             <ChevronLeft className="h-5 w-5" />
-          )}
+        )}
         </button>
       </div>
     </aside>

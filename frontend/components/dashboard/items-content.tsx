@@ -118,6 +118,7 @@ export function ItemsContent() {
   const [isAdjustingStock, setIsAdjustingStock] = useState(false)
   const [barcodeDialogOpen, setBarcodeDialogOpen] = useState(false)
   const [activeBarcodeItem, setActiveBarcodeItem] = useState<ProductResponse | null>(null)
+  const [isSyncVisible, setIsSyncVisible] = useState(true)
 
   const loadProducts = async (showLoading = true) => {
     if (showLoading) {
@@ -134,8 +135,20 @@ export function ItemsContent() {
   }
 
   useEffect(() => {
-    // Initial table hydration from backend API without sync state update in effect chain.
+    // Initial table hydration from backend API
     void loadProducts(false)
+
+    // Check sync status visibility
+    const checkSyncVisibility = () => {
+      const savedSync = localStorage.getItem("nexacore_auto_sync_enabled")
+      setIsSyncVisible(savedSync === null || savedSync === "true")
+    }
+
+    checkSyncVisibility()
+
+    // Listen for changes from Integrations page
+    window.addEventListener("syncSettingsChanged", checkSyncVisibility)
+    return () => window.removeEventListener("syncSettingsChanged", checkSyncVisibility)
   }, [])
 
   const getStockStatus = (stockOnHand: number, reorderLevel: number) => {
@@ -423,20 +436,20 @@ export function ItemsContent() {
                 <TableHead className="w-[140px]">Category</TableHead>
                 <TableHead className="w-[120px] text-center">Barcode</TableHead>
                 <TableHead className="w-[150px] text-center">Stock Level</TableHead>
-                <TableHead className="w-[140px] text-center">Sync Status</TableHead>
+                {isSyncVisible && <TableHead className="w-[140px] text-center">Sync Status</TableHead>}
                 <TableHead className="w-[100px] text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {isTableLoading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={isSyncVisible ? 7 : 6} className="text-center py-8 text-muted-foreground">
                     Loading items...
                   </TableCell>
                 </TableRow>
               ) : filteredProducts.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={isSyncVisible ? 7 : 6} className="text-center py-8 text-muted-foreground">
                     No items found
                   </TableCell>
                 </TableRow>
@@ -463,13 +476,15 @@ export function ItemsContent() {
                       {item.stockOnHand} in stock
                     </span>
                   </TableCell>
-                  <TableCell className="text-center">
-                    {/* Mocking sync status based on ID for demonstration */}
-                    {getSyncStatusBadge(
-                      item.id % 3 === 0 ? "Synced" : 
-                      item.id % 3 === 1 ? "Sync Failed" : "Syncing"
-                    )}
-                  </TableCell>
+                  {isSyncVisible && (
+                    <TableCell className="text-center">
+                      {/* Mocking sync status based on ID for demonstration */}
+                      {getSyncStatusBadge(
+                        item.id % 3 === 0 ? "Synced" : 
+                        item.id % 3 === 1 ? "Sync Failed" : "Syncing"
+                      )}
+                    </TableCell>
+                  )}
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
                       <Button variant="ghost" size="icon" className="h-8 w-8">
