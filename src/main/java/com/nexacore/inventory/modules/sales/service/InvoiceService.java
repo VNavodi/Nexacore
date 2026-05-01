@@ -5,8 +5,11 @@ import com.nexacore.inventory.modules.sales.model.Invoice;
 import com.nexacore.inventory.modules.sales.model.InvoiceItem;
 import com.nexacore.inventory.modules.sales.repository.InvoiceRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -36,5 +39,9 @@ public class InvoiceService {
         }
 
         return invoiceRepository.save(invoice);
+    }
+
+    public List<Invoice> getAllInvoicesSortedByTotal() {
+        return invoiceRepository.findAll(Sort.by(Sort.Direction.DESC, "grandTotal"));
     }
 }

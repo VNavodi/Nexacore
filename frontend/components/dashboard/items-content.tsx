@@ -318,10 +318,10 @@ export function ItemsContent() {
                 <Settings2 className="mr-2 h-4 w-4" />
                 Stock Adjustment
               </Button>
-              <Button variant="outline">
+              {/* <Button variant="outline">
                 <Download className="mr-2 h-4 w-4" />
                 Export CSV
-              </Button>
+              </Button> */}
               <Button onClick={handleOpenModal}>
                 <Plus className="mr-2 h-4 w-4" />
                 New Item
