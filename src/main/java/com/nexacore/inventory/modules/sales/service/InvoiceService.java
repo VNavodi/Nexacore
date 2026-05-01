@@ -1,6 +1,7 @@
 package com.nexacore.inventory.modules.sales.service;
 
 import com.nexacore.inventory.modules.sales.dto.InvoiceDTO;
+import com.nexacore.inventory.modules.sales.dto.SalesSummaryDTO;
 import com.nexacore.inventory.modules.sales.model.Invoice;
 import com.nexacore.inventory.modules.sales.model.InvoiceItem;
 import com.nexacore.inventory.modules.sales.repository.InvoiceRepository;
@@ -43,5 +44,9 @@ public class InvoiceService {
 
     public List<Invoice> getAllInvoicesSortedByTotal() {
         return invoiceRepository.findAll(Sort.by(Sort.Direction.DESC, "grandTotal"));
+    }
+
+    public List<SalesSummaryDTO> getSalesSummary() {
+        return invoiceRepository.getSalesSummary();
     }
 }

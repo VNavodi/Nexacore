@@ -1,6 +1,8 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { ReportAPI, SalesSummaryResponse } from "@/lib/api/reportAPI"
+import { toast } from "sonner"
 import {
   Calendar,
   Download,
@@ -45,22 +47,7 @@ import {
 } from "@/components/ui/chart"
 import { Bar, BarChart, XAxis, YAxis } from "recharts"
 
-// Sample data for reports
-const salesSummaryData = [
-  { date: "2024-01-15", invoiceCount: 12, grossSales: 45000, taxCollected: 6750, net: 38250 },
-  { date: "2024-01-16", invoiceCount: 8, grossSales: 32000, taxCollected: 4800, net: 27200 },
-  { date: "2024-01-17", invoiceCount: 15, grossSales: 58000, taxCollected: 8700, net: 49300 },
-  { date: "2024-01-18", invoiceCount: 10, grossSales: 41000, taxCollected: 6150, net: 34850 },
-  { date: "2024-01-19", invoiceCount: 18, grossSales: 72000, taxCollected: 10800, net: 61200 },
-]
-
-const chartData = [
-  { name: "Mon", sales: 45000 },
-  { name: "Tue", sales: 32000 },
-  { name: "Wed", sales: 58000 },
-  { name: "Thu", sales: 41000 },
-  { name: "Fri", sales: 72000 },
-]
+// Sample data for other reports
 
 const chartConfig = {
   sales: {
@@ -110,6 +97,34 @@ const EmptyState = ({ onRun }: { onRun: () => void }) => (
 export function ReportsContent() {
   const [activeTab, setActiveTab] = useState("sales-summary")
   const [hasData, setHasData] = useState(true)
+  const [isSalesLoading, setIsSalesLoading] = useState(false)
+  const [salesSummary, setSalesSummary] = useState<SalesSummaryResponse[]>([])
+
+  useEffect(() => {
+    if (activeTab === "sales-summary") {
+      loadSalesSummary()
+    }
+  }, [activeTab])
+
+  const loadSalesSummary = async () => {
+    setIsSalesLoading(true)
+    try {
+      const data = await ReportAPI.getSalesSummary()
+      setSalesSummary(data)
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to load sales summary")
+    } finally {
+      setIsSalesLoading(false)
+    }
+  }
+
+  const chartData = salesSummary.map(item => ({
+    name: new Date(item.date).toLocaleDateString('en-US', { weekday: 'short' }),
+    sales: item.totalAmount
+  })).reverse().slice(-7) // Show last 7 days
+
+  const totalInvoices = salesSummary.reduce((sum, item) => sum + item.invoiceCount, 0)
+  const grandTotalAll = salesSummary.reduce((sum, item) => sum + item.totalAmount, 0)
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-LK", {
@@ -181,16 +196,19 @@ export function ReportsContent() {
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Category" />
               </SelectTrigger>
+             
               <SelectContent>
-                <SelectItem value="all">All Categories</SelectItem>
-                <SelectItem value="clothing">Clothing</SelectItem>
-                <SelectItem value="accessories">Accessories</SelectItem>
-                <SelectItem value="footwear">Footwear</SelectItem>
-              </SelectContent>
+                  <SelectItem value="all">All Categories</SelectItem>
+                  <SelectItem value="electronics">Electronics</SelectItem>
+                  <SelectItem value="grocery">Grocery</SelectItem>
+                  <SelectItem value="kitchenware">Kitchenware</SelectItem>
+                  <SelectItem value="apparel">Apparel</SelectItem>
+                  <SelectItem value="health">Health</SelectItem>
+                </SelectContent>
             </Select>
 
             {/* Supplier Filter */}
-            <Select>
+            {/* <Select>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Supplier" />
               </SelectTrigger>
@@ -200,10 +218,10 @@ export function ReportsContent() {
                 <SelectItem value="supplier-2">XYZ Fabrics</SelectItem>
                 <SelectItem value="supplier-3">Fashion Imports</SelectItem>
               </SelectContent>
-            </Select>
+            </Select> */}
 
             {/* Customer Filter */}
-            <Select>
+            {/* <Select>
               <SelectTrigger className="w-40">
                 <SelectValue placeholder="Customer" />
               </SelectTrigger>
@@ -213,14 +231,17 @@ export function ReportsContent() {
                 <SelectItem value="customer-2">XYZ Retail</SelectItem>
                 <SelectItem value="customer-3">Fashion Hub</SelectItem>
               </SelectContent>
-            </Select>
+            </Select> */}
 
             <div className="flex items-center gap-2 ml-auto">
-              <Button onClick={() => setHasData(true)}>
+              <Button onClick={() => {
+                setHasData(true)
+                if (activeTab === "sales-summary") loadSalesSummary()
+              }}>
                 Apply Filters
               </Button>
               
-              <DropdownMenu>
+              {/* <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline">
                     <Download className="h-4 w-4 mr-2" />
@@ -238,7 +259,7 @@ export function ReportsContent() {
                     Export as PDF
                   </DropdownMenuItem>
                 </DropdownMenuContent>
-              </DropdownMenu>
+              </DropdownMenu> */}
             </div>
           </div>
         </CardContent>
@@ -256,7 +277,9 @@ export function ReportsContent() {
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
                     <h3 className="text-lg font-semibold">Sales Summary Report</h3>
-                    <Badge variant="secondary">Last 5 days</Badge>
+                    <Badge variant="secondary">
+                      {isSalesLoading ? "Loading..." : `${salesSummary.length} days recorded`}
+                    </Badge>
                   </div>
                   
                   {/* Chart */}
@@ -277,29 +300,37 @@ export function ReportsContent() {
                       <TableRow>
                         <TableHead>Date</TableHead>
                         <TableHead className="text-right">Invoice Count</TableHead>
-                        <TableHead className="text-right">Gross Sales</TableHead>
-                        <TableHead className="text-right">Tax Collected</TableHead>
-                        <TableHead className="text-right">Net</TableHead>
+                        <TableHead className="text-right">Grand Total</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {salesSummaryData.map((row, index) => (
-                        <TableRow key={index}>
-                          <TableCell>{row.date}</TableCell>
-                          <TableCell className="text-right">{row.invoiceCount}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(row.grossSales)}</TableCell>
-                          <TableCell className="text-right">{formatCurrency(row.taxCollected)}</TableCell>
-                          <TableCell className="text-right font-medium">{formatCurrency(row.net)}</TableCell>
+                      {isSalesLoading ? (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                            Loading summary...
+                          </TableCell>
                         </TableRow>
-                      ))}
+                      ) : salesSummary.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={3} className="text-center py-8 text-muted-foreground">
+                            No sales data found for the selected period
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        salesSummary.map((row, index) => (
+                          <TableRow key={index}>
+                            <TableCell>{row.date}</TableCell>
+                            <TableCell className="text-right">{row.invoiceCount}</TableCell>
+                            <TableCell className="text-right font-medium">{formatCurrency(row.totalAmount)}</TableCell>
+                          </TableRow>
+                        ))
+                      )}
                     </TableBody>
                     <TableFooter>
                       <TableRow>
                         <TableCell className="font-semibold">Total</TableCell>
-                        <TableCell className="text-right font-semibold">63</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(248000)}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(37200)}</TableCell>
-                        <TableCell className="text-right font-semibold">{formatCurrency(210800)}</TableCell>
+                        <TableCell className="text-right font-semibold">{totalInvoices}</TableCell>
+                        <TableCell className="text-right font-semibold">{formatCurrency(grandTotalAll)}</TableCell>
                       </TableRow>
                     </TableFooter>
                   </Table>

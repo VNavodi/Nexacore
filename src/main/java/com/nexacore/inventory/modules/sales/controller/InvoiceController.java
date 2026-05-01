@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.*;
 import java.util.List;
 
 @RestController
-@RequestMapping("/api/invoices")
+@RequestMapping("/api/v1/invoices")
 @RequiredArgsConstructor
 public class InvoiceController {
 
@@ -25,6 +25,11 @@ public class InvoiceController {
     @GetMapping
     public ResponseEntity<List<Invoice>> getAllInvoices() {
         return ResponseEntity.ok(invoiceService.getAllInvoicesSortedByTotal());
+    }
+
+    @GetMapping("/summary")
+    public ResponseEntity<?> getSalesSummary() {
+        return ResponseEntity.ok(invoiceService.getSalesSummary());
     }
 }
 
