@@ -72,7 +72,7 @@ export function SalesContent() {
     for (let i = 0; i < SALES_API_BASE_URLS.length; i++) {
       const baseUrl = SALES_API_BASE_URLS[i]
       try {
-        const response = await fetch(`${baseUrl}/invoices`, {
+        const response = await fetch(`${baseUrl}/v1/invoices`, {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
@@ -102,7 +102,7 @@ export function SalesContent() {
   const fetchInvoices = async (): Promise<InvoiceRecord[]> => {
     for (const baseUrl of SALES_API_BASE_URLS) {
       try {
-        const response = await fetch(`${baseUrl}/invoices`, {
+        const response = await fetch(`${baseUrl}/v1/invoices`, {
           method: "GET",
           headers: getAuthHeaders(),
         })
@@ -118,7 +118,7 @@ export function SalesContent() {
   const [invoiceRecords, setInvoiceRecords] = useState<InvoiceRecord[]>([])
   const [isLoadingInvoices, setIsLoadingInvoices] = useState(true)
   const [viewingInvoice, setViewingInvoice] = useState<InvoiceRecord | null>(null)
-  
+
   const [filterStartDate, setFilterStartDate] = useState("")
   const [filterEndDate, setFilterEndDate] = useState("")
   const [appliedStartDate, setAppliedStartDate] = useState("")
@@ -190,10 +190,10 @@ export function SalesContent() {
       if (productData) {
         setInvoiceItems(prev => prev.map(item => {
           if (item.id !== id) return item
-          const updated = { 
-            ...item, 
-            itemName: productData.name, 
-            unitPrice: productData.sellingPrice 
+          const updated = {
+            ...item,
+            itemName: productData.name,
+            unitPrice: productData.sellingPrice
           }
           const sub = updated.qty * updated.unitPrice
           updated.lineTotal = sub - sub * (updated.discount / 100)
@@ -309,11 +309,11 @@ export function SalesContent() {
                 {invoiceItems.map((item) => (
                   <TableRow key={item.id}>
                     <TableCell>
-                      <Input 
-                        value={item.skuNumber} 
-                        onChange={(e) => updateInvoiceItem(item.id, "skuNumber", e.target.value)} 
+                      <Input
+                        value={item.skuNumber}
+                        onChange={(e) => updateInvoiceItem(item.id, "skuNumber", e.target.value)}
                         onKeyUp={() => handleSkuBlur(item.id, item.skuNumber)}
-                        placeholder="SKU" 
+                        placeholder="SKU"
                       />
                     </TableCell>
                     <TableCell>
@@ -371,56 +371,29 @@ export function SalesContent() {
         </CardContent>
       </Card>
 
-      
+
 
       {/* Customer Invoice List */}
       <Card>
-        {/* Date Filter Card */}
-      
-        {/* <CardContent className="p-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                value={filterStartDate}
-                onChange={(e) => setFilterStartDate(e.target.value)}
-                className="w-40"
-              />
-            </div>
-            <span className="text-muted-foreground text-sm font-medium">to</span>
-            <div className="flex items-center gap-2">
-              <Input
-                type="date"
-                value={filterEndDate}
-                onChange={(e) => setFilterEndDate(e.target.value)}
-                className="w-40"
-              />
-            </div>
-          </div>
+        <CardContent className="p-4 flex items-center justify-end gap-3">
+          <Input
+            type="date"
+            value={filterStartDate}
+            onChange={(e) => setFilterStartDate(e.target.value)}
+            className="w-40"
+          />
+          <span className="text-muted-foreground text-sm font-medium">to</span>
+          <Input
+            type="date"
+            value={filterEndDate}
+            onChange={(e) => setFilterEndDate(e.target.value)}
+            className="w-40"
+          />
           <Button onClick={handleApplyFilters} className="bg-zinc-900 hover:bg-zinc-800 text-white">
             Apply Filters
           </Button>
-        </CardContent> */}
+        </CardContent>
 
-        <CardContent className="p-4 flex items-center justify-end gap-3">
-  <Input
-    type="date"
-    value={filterStartDate}
-    onChange={(e) => setFilterStartDate(e.target.value)}
-    className="w-40"
-  />
-  <span className="text-muted-foreground text-sm font-medium">to</span>
-  <Input
-    type="date"
-    value={filterEndDate}
-    onChange={(e) => setFilterEndDate(e.target.value)}
-    className="w-40"
-  />
-  <Button onClick={handleApplyFilters} className="bg-zinc-900 hover:bg-zinc-800 text-white">
-    Apply Filters
-  </Button>
-</CardContent>
-      
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <TrendingDown className="h-5 w-5" />

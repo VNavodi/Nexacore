@@ -119,6 +119,10 @@ export function ItemsContent() {
   const [barcodeDialogOpen, setBarcodeDialogOpen] = useState(false)
   const [activeBarcodeItem, setActiveBarcodeItem] = useState<ProductResponse | null>(null)
   const [isSyncVisible, setIsSyncVisible] = useState(true)
+  
+  // Edit mode state
+  const [isEditing, setIsEditing] = useState(false)
+  const [editingProductId, setEditingProductId] = useState<number | null>(null)
 
   const loadProducts = async (showLoading = true) => {
     if (showLoading) {
@@ -232,10 +236,18 @@ export function ItemsContent() {
         reorderLevel: reorderLevel ? parseInt(reorderLevel) : 0,
       }
 
-      await ProductAPI.createProduct(productRequest)
-      toast.success("Item created successfully!", {
-        description: `${itemName.trim()} has been added to inventory.`,
-      })
+      if (isEditing && editingProductId !== null) {
+        await ProductAPI.updateProduct(editingProductId, productRequest)
+        toast.success("Item updated successfully!", {
+          description: `${itemName.trim()} has been updated.`,
+        })
+      } else {
+        await ProductAPI.createProduct(productRequest)
+        toast.success("Item created successfully!", {
+          description: `${itemName.trim()} has been added to inventory.`,
+        })
+      }
+      
       await loadProducts()
       resetForm()
       setIsModalOpen(false)
@@ -247,13 +259,15 @@ export function ItemsContent() {
   }
 
   const resetForm = () => {
-    setSku("SKU-001")
+    setSku("")
     setItemName("")
     setCategory("")
     setCostPrice("")
     setSellingPrice("")
     setOpeningStock("")
     setReorderLevel("")
+    setIsEditing(false)
+    setEditingProductId(null)
   }
 
   const handleCloseModal = () => {
@@ -265,6 +279,31 @@ export function ItemsContent() {
     resetForm()
     setIsModalOpen(true)
     await generateNextSku()
+  }
+
+  const handleEditClick = (product: ProductResponse) => {
+    setSku(product.sku)
+    setItemName(product.name)
+    setCategory(product.category)
+    setCostPrice(product.costPrice.toString())
+    setSellingPrice(product.sellingPrice.toString())
+    setOpeningStock(product.stockOnHand.toString())
+    setReorderLevel(product.reorderLevel.toString())
+    setIsEditing(true)
+    setEditingProductId(product.id)
+    setIsModalOpen(true)
+  }
+
+  const handleDeleteClick = async (id: number, name: string) => {
+    if (window.confirm(`Are you sure you want to delete "${name}"?`)) {
+      try {
+        await ProductAPI.deleteProduct(id)
+        toast.success("Item deleted successfully")
+        await loadProducts()
+      } catch (err) {
+        toast.error(err instanceof Error ? err.message : "Failed to delete product")
+      }
+    }
   }
 
   const matchedAdjustmentItem = useMemo(
@@ -487,10 +526,20 @@ export function ItemsContent() {
                   )}
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-2">
-                      <Button variant="ghost" size="icon" className="h-8 w-8">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8"
+                        onClick={() => handleEditClick(item)}
+                      >
                         <Pencil className="h-4 w-4" />
                       </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive">
+                      <Button 
+                        variant="ghost" 
+                        size="icon" 
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                        onClick={() => handleDeleteClick(item.id, item.name)}
+                      >
                         <Trash2 className="h-4 w-4" />
                       </Button>
                     </div>
@@ -507,14 +556,14 @@ export function ItemsContent() {
       <Dialog open={isModalOpen} onOpenChange={handleCloseModal}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
-            <DialogTitle>New Item</DialogTitle>
+            <DialogTitle>{isEditing ? "Edit Item" : "New Item"}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 mt-4">
             <div className="grid gap-2">
               <Label htmlFor="sku">SKU Code</Label>
               <Input id="sku" value={sku} disabled className="bg-muted" />
               <p className="text-xs text-muted-foreground">
-                Auto-generated 
+                {isEditing ? "SKU cannot be changed" : "Auto-generated"}
               </p>
             </div>
             <div className="grid gap-2">
@@ -591,9 +640,9 @@ export function ItemsContent() {
             <Button variant="outline" onClick={handleCloseModal}>
               Cancel
             </Button>
-            <Button onClick={handleSaveItem} disabled={isLoading || isGeneratingSku}>
+            <Button onClick={handleSaveItem} disabled={isLoading || (isGeneratingSku && !isEditing)}>
               {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {isLoading ? "Saving..." : "Save Item"}
+              {isLoading ? "Saving..." : (isEditing ? "Update Item" : "Save Item")}
             </Button>
           </DialogFooter>
         </DialogContent>
