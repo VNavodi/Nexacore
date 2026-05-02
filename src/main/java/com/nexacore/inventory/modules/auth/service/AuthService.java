@@ -3,11 +3,13 @@ package com.nexacore.inventory.modules.auth.service;
 import com.nexacore.inventory.modules.auth.dto.LoginRequest;
 import com.nexacore.inventory.modules.auth.dto.LoginResponse;
 import com.nexacore.inventory.modules.auth.dto.RegisterRequest;
+import com.nexacore.inventory.modules.auth.dto.UserResponse;
 import com.nexacore.inventory.modules.auth.model.AppUser;
 import com.nexacore.inventory.modules.auth.repository.AppUserRepository;
 import com.nexacore.inventory.modules.auth.security.JwtUtil;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AuthService {
@@ -22,25 +24,16 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
     }
 
+    @Transactional
     public LoginResponse register(RegisterRequest request) {
-        String username = request.username() == null ? "" : request.username().trim();
-        String fullName = request.fullName() == null ? "" : request.fullName().trim();
-        String companyName = request.companyName() == null ? "" : request.companyName().trim();
-        String email = request.email() == null ? "" : request.email().trim();
-        String password = request.password() == null ? "" : request.password().trim();
-
-        if (username.isEmpty()) {
-            throw new IllegalArgumentException("Username is required");
-        }
-        if (email.isEmpty()) {
-            throw new IllegalArgumentException("Email is required");
-        }
-        if (companyName.isEmpty()) {
-            throw new IllegalArgumentException("Company name is required");
-        }
-        if (password.isEmpty()) {
-            throw new IllegalArgumentException("Password is required");
-        }
+        String email = request.email().trim();
+        String username = (request.username() == null || request.username().isBlank()) 
+            ? email 
+            : request.username().trim();
+        
+        String fullName = request.fullName().trim();
+        String companyName = request.companyName().trim();
+        String password = request.password();
 
         if (appUserRepository.existsByUsernameIgnoreCase(username)) {
             throw new IllegalArgumentException("Username already exists");
@@ -57,22 +50,37 @@ public class AuthService {
             .passwordHash(passwordEncoder.encode(password))
             .build();
 
-        appUserRepository.save(user);
-        return new LoginResponse(jwtUtil.generateToken(user.getUsername()));
+        user = appUserRepository.save(user);
+        
+        String token = jwtUtil.generateToken(user.getUsername());
+        return new LoginResponse(token, mapToUserResponse(user));
     }
 
     public LoginResponse login(LoginRequest request) {
-        String username = request.username() == null ? "" : request.username().trim();
+        String identifier = request.username() == null ? "" : request.username().trim();
         String password = request.password() == null ? "" : request.password().trim();
 
-        AppUser user = appUserRepository.findByUsernameIgnoreCase(username)
-            .or(() -> appUserRepository.findByEmailIgnoreCase(username))
+        AppUser user = appUserRepository.findByUsernameIgnoreCase(identifier)
+            .or(() -> appUserRepository.findByEmailIgnoreCase(identifier))
             .orElseThrow(() -> new IllegalArgumentException("Invalid credentials"));
 
-        if (passwordEncoder.matches(password, user.getPasswordHash())) {
-            return new LoginResponse(jwtUtil.generateToken(user.getUsername()));
+        if (!passwordEncoder.matches(password, user.getPasswordHash())) {
+            throw new IllegalArgumentException("Invalid credentials");
         }
 
-        throw new IllegalArgumentException("Invalid credentials");
+        String token = jwtUtil.generateToken(user.getUsername());
+        return new LoginResponse(token, mapToUserResponse(user));
+    }
+
+    private UserResponse mapToUserResponse(AppUser user) {
+        return new UserResponse(
+            user.getId(),
+            user.getUsername(),
+            user.getEmail(),
+            user.getFullName(),
+            user.getCompanyName(),
+            user.getCreatedAt()
+        );
     }
 }
+

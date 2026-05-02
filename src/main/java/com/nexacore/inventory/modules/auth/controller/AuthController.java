@@ -4,6 +4,7 @@ import com.nexacore.inventory.modules.auth.dto.LoginRequest;
 import com.nexacore.inventory.modules.auth.dto.LoginResponse;
 import com.nexacore.inventory.modules.auth.dto.RegisterRequest;
 import com.nexacore.inventory.modules.auth.service.AuthService;
+import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -26,7 +27,8 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<LoginResponse> register(@RequestBody RegisterRequest request) {
+    public ResponseEntity<LoginResponse> register(@Valid @RequestBody RegisterRequest request) {
         return ResponseEntity.ok(authService.register(request));
     }
 }
+
