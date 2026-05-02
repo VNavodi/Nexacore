@@ -49,9 +49,23 @@ export default function AuthPage() {
       })
 
       if (!response.ok) {
-        const text = await response.text()
-        throw new Error(text || (isRegister ? "Registration failed" : "Login failed"))
+        let errorMessage = isRegister ? "Registration failed" : "Login failed"
+        try {
+          const errorData = await response.json()
+          // Extract message from Spring Boot default error or custom error
+          errorMessage = errorData.message || errorData.error || errorMessage
+          
+          // Map technical messages to user-friendly ones
+          if (errorMessage === "Invalid credentials") {
+            errorMessage = "Invalid credentials: password or username is incorrect"
+          }
+        } catch {
+          // Fallback to status text if not JSON
+          errorMessage = response.statusText || errorMessage
+        }
+        throw new Error(errorMessage)
       }
+
 
       const data = await response.json()
       if (!data?.token) {
@@ -219,10 +233,11 @@ export default function AuthPage() {
               </Button>
 
               {error && (
-                <p className="text-sm text-red-600" role="alert">
+                <p className="text-[13px] font-medium text-[#e63946] text-center mt-2 animate-in fade-in duration-300">
                   {error}
                 </p>
               )}
+
             </form>
 
             <div className="mt-8 pt-6 border-t border-slate-100 text-center">
