@@ -30,6 +30,7 @@ public class InvoiceService {
         if (dto.getItems() != null) {
             dto.getItems().forEach(itemDto -> {
                 InvoiceItem item = new InvoiceItem();
+                item.setSkuNumber(itemDto.getSkuNumber());
                 item.setItemName(itemDto.getItemName());
                 item.setQty(itemDto.getQty());
                 item.setUnitPrice(itemDto.getUnitPrice());

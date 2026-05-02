@@ -53,8 +53,8 @@ export function Sidebar({ onCollapseChange }: SidebarProps) {
   <Image
     src="/logo.png"
     alt="Nexacore Logo"
-          width={collapsed ? 32 : 800}  
-          height={400}
+          width={collapsed ? 32 : 240}  
+          height={64}
     className="object-cover"
   />
   

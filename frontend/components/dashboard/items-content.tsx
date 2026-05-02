@@ -49,8 +49,8 @@ import {
 
 function getStockLevelStyle(stockOnHand: number, reorderLevel: number) {
   if (stockOnHand <= 0) return "bg-red-500 text-white"
-  if (stockOnHand <= reorderLevel) return "bg-red-500 text-white"
-  if (stockOnHand > reorderLevel * 5) return "bg-green-100 text-green-700"
+  // if (stockOnHand <= reorderLevel) return "bg-red-500 text-white"
+  if (stockOnHand > reorderLevel ) return "bg-green-100 text-green-700"
   return "bg-slate-100 text-slate-700"
 }
 

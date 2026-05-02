@@ -20,6 +20,9 @@ public class InvoiceItem {
     @JsonIgnore
     private Invoice invoice;
 
+    @Column(name = "sku_number")
+    private String skuNumber;
+
     @Column(name = "item_name", nullable = false)
     private String itemName;
 

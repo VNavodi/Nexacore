@@ -61,6 +61,12 @@ public class ProductController {
         return ResponseEntity.ok(productService.getLowStockProducts());
     }
 
+    @GetMapping("/sku/{sku}")
+    public ResponseEntity<ProductResponse> getProductBySku(@PathVariable String sku) {
+        Product product = productService.getBySku(sku);
+        return ResponseEntity.ok(convertToResponse(product));
+    }
+
     @GetMapping("/category/{category}")
     public ResponseEntity<List<Product>> getByCategory(@PathVariable String category) {
         return ResponseEntity.ok(productService.getProductsByCategory(category));

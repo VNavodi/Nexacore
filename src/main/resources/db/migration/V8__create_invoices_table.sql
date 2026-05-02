@@ -18,3 +18,6 @@ CREATE TABLE invoice_items (
     line_total DECIMAL(15, 2) NOT NULL,
     FOREIGN KEY (invoice_id) REFERENCES invoices(id) ON DELETE CASCADE
 );
+
+ALTER TABLE invoice_items 
+ADD COLUMN sku_number VARCHAR(100);

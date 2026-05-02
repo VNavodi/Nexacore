@@ -5,6 +5,7 @@ import java.math.BigDecimal;
 
 @Data
 public class InvoiceItemDTO {
+    private String skuNumber;
     private String itemName;
     private Integer qty;
     private BigDecimal unitPrice;

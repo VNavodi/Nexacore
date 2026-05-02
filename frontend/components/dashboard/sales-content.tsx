@@ -30,6 +30,7 @@ const SALES_API_BASE_URLS = process.env.NEXT_PUBLIC_API_URL
 
 interface InvoiceItem {
   id: string
+  skuNumber: string
   itemName: string
   qty: number
   unitPrice: number
@@ -45,6 +46,7 @@ interface InvoiceRecord {
   grandTotal: number
   subtotal: number
   items: {
+    skuNumber: string
     itemName: string
     qty: number
     unitPrice: number
@@ -145,7 +147,7 @@ export function SalesContent() {
   const addInvoiceItem = () => {
     setInvoiceItems([
       ...invoiceItems,
-      { id: Date.now().toString(), itemName: "", qty: 0, unitPrice: 0, discount: 0, lineTotal: 0 },
+      { id: Date.now().toString(), skuNumber: "", itemName: "", qty: 0, unitPrice: 0, discount: 0, lineTotal: 0 },
     ])
   }
 
@@ -163,6 +165,44 @@ export function SalesContent() {
         return updated
       })
     )
+  }
+
+  const handleSkuBlur = async (id: string, sku: string) => {
+    if (!sku.trim()) return
+
+    try {
+      // Find the best API URL to use
+      let productData = null
+      for (const baseUrl of SALES_API_BASE_URLS) {
+        try {
+          const response = await fetch(`${baseUrl}/v1/products/sku/${sku}`, {
+            headers: getAuthHeaders(),
+          })
+          if (response.ok) {
+            productData = await response.json()
+            break
+          }
+        } catch {
+          // try next
+        }
+      }
+
+      if (productData) {
+        setInvoiceItems(prev => prev.map(item => {
+          if (item.id !== id) return item
+          const updated = { 
+            ...item, 
+            itemName: productData.name, 
+            unitPrice: productData.sellingPrice 
+          }
+          const sub = updated.qty * updated.unitPrice
+          updated.lineTotal = sub - sub * (updated.discount / 100)
+          return updated
+        }))
+      }
+    } catch (error) {
+      console.error("Error fetching product by SKU:", error)
+    }
   }
 
   const parseNum = (v: string) => (v.trim() === "" ? 0 : Number.isFinite(Number(v)) ? Number(v) : 0)
@@ -187,8 +227,8 @@ export function SalesContent() {
         invoiceDate,
         subtotal: subtotalBeforeDiscount,
         grandTotal,
-        items: invoiceItems.map(({ itemName, qty, unitPrice, discount, lineTotal }) => ({
-          itemName, qty, unitPrice, discount, lineTotal,
+        items: invoiceItems.map(({ skuNumber, itemName, qty, unitPrice, discount, lineTotal }) => ({
+          skuNumber, itemName, qty, unitPrice, discount, lineTotal,
         })),
       })
       if (response.ok) {
@@ -256,7 +296,8 @@ export function SalesContent() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[250px]">Item</TableHead>
+                  <TableHead className="w-[150px]">SKU</TableHead>
+                  <TableHead className="w-[200px]">Item</TableHead>
                   <TableHead className="w-[80px]">Qty</TableHead>
                   <TableHead className="w-[120px]">Unit Price</TableHead>
                   <TableHead className="w-[100px]">Discount %</TableHead>
@@ -267,6 +308,14 @@ export function SalesContent() {
               <TableBody>
                 {invoiceItems.map((item) => (
                   <TableRow key={item.id}>
+                    <TableCell>
+                      <Input 
+                        value={item.skuNumber} 
+                        onChange={(e) => updateInvoiceItem(item.id, "skuNumber", e.target.value)} 
+                        onKeyUp={() => handleSkuBlur(item.id, item.skuNumber)}
+                        placeholder="SKU" 
+                      />
+                    </TableCell>
                     <TableCell>
                       <Input value={item.itemName} onChange={(e) => updateInvoiceItem(item.id, "itemName", e.target.value)} placeholder="Enter item name" />
                     </TableCell>
@@ -460,6 +509,7 @@ export function SalesContent() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>SKU</TableHead>
                     <TableHead>Item</TableHead>
                     <TableHead className="text-center">Qty</TableHead>
                     <TableHead className="text-right">Unit Price</TableHead>
@@ -470,6 +520,7 @@ export function SalesContent() {
                 <TableBody>
                   {(viewingInvoice.items ?? []).map((item, i) => (
                     <TableRow key={i}>
+                      <TableCell className="font-mono text-xs">{item.skuNumber || "—"}</TableCell>
                       <TableCell className="font-medium">{item.itemName}</TableCell>
                       <TableCell className="text-center">{item.qty}</TableCell>
                       <TableCell className="text-right">Rs. {Number(item.unitPrice).toLocaleString()}</TableCell>
